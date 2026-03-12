@@ -1,3 +1,4 @@
+"use client"
 import React from "react";
 
 export default function PrivacyPolicy() {
@@ -6,7 +7,7 @@ export default function PrivacyPolicy() {
       {/* Hero Section */}
       <section className="py-16 bg-gradient-to-t from-pink-500/5 via-background to-transparent backdrop-blur-xl">
         <div className="container mx-auto text-center px-4">
-          <h1 className="text-4xl font-bold">Privacy Policy Studic by Sid sharma</h1>
+          <h1 className="text-4xl font-bold">Privacy Policy</h1>
           <p className="mt-4 text-lg">Last updated: {new Date().toLocaleDateString()}</p>
         </div>
       </section>
@@ -74,8 +75,8 @@ export default function PrivacyPolicy() {
               <h2 className="text-2xl font-bold mb-4">Contact Us</h2>
               <p>If you have any questions about this Privacy Policy, please contact us at:</p>
               <div className="mt-2">
-                <p>Email: i@sidsharma.in</p>
-                <p>Website: www.sidsharma.in</p>
+                <p>Email: mynmss3@gmail.com</p>
+                <p>Website: www.studic.in</p>
               </div>
             </div>
           </div>

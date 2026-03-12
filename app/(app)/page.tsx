@@ -46,7 +46,7 @@ export default function HomePage() {
           <div className="px-4">
             <div className="max-w-3xl mx-auto text-center space-y-6">
               <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent leading-tight">
-                Master Your Craft with Expert-Led Learning
+                Master Your Craft with Expert-Led Learning!
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground md:px-12">
                 Join our community of passionate learners and transform your skills through immersive courses and practical resources.

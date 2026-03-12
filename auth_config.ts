@@ -11,7 +11,7 @@ export default {
                 sameSite: "lax",
                 path: "/",
                 secure: true,
-                domain:  process.env.NODE_ENV === "production" ? ".sidsharma.in" : undefined,
+                domain:  process.env.NODE_ENV === "production" ? ".studic.in" : undefined,
             }
         }
     },

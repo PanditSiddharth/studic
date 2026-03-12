@@ -25,7 +25,8 @@ export const NavbarDropdown = () => {
         { name: "Courses", href: "/courses", icon: IoBookOutline },
         { name: "Blogs", href: "/blogs", icon: RiBloggerLine },
         { name: "About", href: "/about", icon: FcAbout },
-        { name: "Contact", href: "/contact", icon: BiSolidContact }
+        { name: "Contact", href: "/contact", icon: BiSolidContact },
+        { name: "Privacy", href: "/privacy", icon: BiSolidContact }
     ];
 
     const others = [
