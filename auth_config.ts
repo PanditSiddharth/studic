@@ -10,9 +10,9 @@ export default {
             options: {
                 sameSite: "lax",
                 path: "/",
-                secure: true,
+                secure: process.env.NODE_ENV === "production",
             }
         }
     },
-    providers: [Google,Github]} satisfies NextAuthConfig
-
+    providers: [Google, Github({ issuer: "https://github.com/login/oauth" })]
+} satisfies NextAuthConfig
