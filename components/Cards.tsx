@@ -42,7 +42,7 @@ export const BlogCard: React.FC<IBlogCard> = ({
             <div className={cn('p-6', className2)}>
                 <h2 className="text-xl font-bold border-b">{title}</h2>
                 {description && typeof description === 'string' ? (
-                    <p className="mt-2 text-sm text-gray-600 line-clamp-3">
+                    <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
                         {description}
                     </p>
                 ) : (
@@ -53,7 +53,7 @@ export const BlogCard: React.FC<IBlogCard> = ({
                 ) : (
                     <div className="flex justify-between items-center mt-4">
                         {date && (
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                                 {new Date(date).toLocaleDateString()}
                             </span>
                         )}
@@ -82,14 +82,14 @@ export const CourseCard: React.FC<IBlogCard> = ({
             <div className="p-6">
                 <h2 className="text-lg font-bold line-clamp-2">{title}</h2>
                 {description && (
-                    <p className="mt-2 text-sm text-gray-600 line-clamp-3">
+                    <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
                         {description}
                     </p>
                 )}
                 <div className="flex justify-between items-center mt-4">
                     <span className="text-sm font-medium">
                         {price === 0 ? (
-                            <span className="text-green-600">FREE</span>
+                            <span className="text-emerald-600 dark:text-emerald-400">Free</span>
                         ) : (
                             <>₹{price}</>
                         )}
