@@ -17,6 +17,34 @@ import { getSessionUser } from "./user";
 const idOf = (value: any) => String(value?._id ?? value ?? "");
 const isAdmin = (user: any) => user?.role === "admin";
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const COMMUNITY_CHAT_KEY = "all-site-users";
+const COMMUNITY_CHAT_NAME = "Studic Community";
+
+async function ensureCommunityChat(userId: string) {
+  const users = await UserModel.find({ status: { $ne: "deleted" } }).select("_id").lean();
+  const participantIds = users.map((entry: any) => entry._id);
+  if (!participantIds.some((id: any) => String(id) === userId)) {
+    participantIds.push(new mongoose.Types.ObjectId(userId));
+  }
+
+  return ChatModel.findOneAndUpdate(
+    { systemKey: COMMUNITY_CHAT_KEY },
+    {
+      $set: {
+        name: COMMUNITY_CHAT_NAME,
+        description: "A shared chat for everyone on Studic.",
+      },
+      $setOnInsert: {
+        kind: "group",
+        admins: [],
+        createdBy: userId,
+        lastMessageAt: new Date(),
+      },
+      $addToSet: { participants: { $each: participantIds } },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+}
 
 const toChatUser = (user: any): ChatUser => ({
   _id: idOf(user),
@@ -86,6 +114,7 @@ const toChatSummary = (
     canSend: state.participant,
     isGroupAdmin: isGroupAdmin(chat, viewerId),
     createdBy: idOf(chat?.createdBy),
+    systemKey: chat?.systemKey || undefined,
     unread: state.unread,
   };
 };
@@ -101,6 +130,7 @@ export async function getChats(options: GetChatsOptions = {}) {
 
   try {
     await connectDB();
+    await ensureCommunityChat(String(user._id));
     const admin = isAdmin(user);
     const scope: "mine" | "all" = admin && options.scope === "all" ? "all" : "mine";
     const query = scope === "all" ? {} : { participants: user._id };
@@ -159,6 +189,7 @@ export async function getChat(chatId: string) {
 
   try {
     await connectDB();
+    await ensureCommunityChat(String(user._id));
     const chat = await ChatModel.findById(chatId)
       .populate("participants", "name username image role")
       .populate("createdBy", "name username image role")
@@ -210,6 +241,7 @@ export async function getChatMessages(input: { chatId: string; after?: string })
 
   try {
     await connectDB();
+    await ensureCommunityChat(String(user._id));
     const chat = await ChatModel.findById(input.chatId)
       .select("participants")
       .lean();

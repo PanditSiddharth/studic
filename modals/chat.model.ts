@@ -34,6 +34,7 @@ export interface ChatSummary {
   canSend: boolean;
   isGroupAdmin: boolean;
   createdBy: string;
+  systemKey?: string;
   unread: number;
 }
 
@@ -57,6 +58,7 @@ export interface IChat {
   participants: mongoose.Types.ObjectId[] | string[];
   admins: mongoose.Types.ObjectId[] | string[];
   createdBy: mongoose.Types.ObjectId | string;
+  systemKey?: string;
   lastMessage?: {
     text: string;
     senderId: mongoose.Types.ObjectId | string;
@@ -103,6 +105,7 @@ const ChatSchema = new Schema<IChat>(
     participants: [{ type: Schema.Types.ObjectId, ref: "User", required: true, index: true }],
     admins: [{ type: Schema.Types.ObjectId, ref: "User" }],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    systemKey: { type: String, trim: true },
     lastMessage: { type: LastMessageSchema },
     lastMessageAt: { type: Date, index: true },
   },
@@ -111,6 +114,7 @@ const ChatSchema = new Schema<IChat>(
 
 ChatSchema.index({ participants: 1, lastMessageAt: -1 });
 ChatSchema.index({ kind: 1, lastMessageAt: -1 });
+ChatSchema.index({ systemKey: 1 }, { unique: true, sparse: true });
 
 const MessageSchema = new Schema<IMessage>(
   {

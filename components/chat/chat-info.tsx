@@ -63,6 +63,12 @@ export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProp
           </div>
         ) : null}
 
+        {chat.systemKey === "all-site-users" ? (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-[11px] leading-5 text-muted-foreground">
+            Every registered Studic user is automatically included in this community. Members cannot leave or be removed.
+          </div>
+        ) : null}
+
         <div>
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
