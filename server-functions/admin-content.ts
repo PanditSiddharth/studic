@@ -71,3 +71,11 @@ export async function updateAdminVisibility(kind: "courses" | "blogs", id: strin
   if (!updated) return { error: "Record not found." };
   return { success: true, item: JSON.parse(JSON.stringify(updated)) };
 }
+
+export async function getAdminProductBySlug(slug: string) {
+  if (!(await requireAdmin())) return { error: "Unauthorized" as const };
+  await connectDB();
+  const product = await ProductModel.findOne({ slug }).lean();
+  if (!product) return { error: "Product not found" as const };
+  return JSON.parse(JSON.stringify(product));
+}
