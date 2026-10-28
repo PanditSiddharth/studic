@@ -1,11 +1,16 @@
 import mongoose, { Schema, type Model } from "mongoose";
 
 export type BlogStatus = "draft" | "private" | "public" | "unlisted" | "free" | "paid";
+export type BlogAccessType = "free" | "paid";
 export interface IBlog {
   _id?: string;
   slug: string;
   title: string;
   status: BlogStatus;
+  /** Price gate, kept separate from visibility (public/unlisted/private/draft). */
+  accessType?: BlogAccessType;
+  price?: number;
+  currency?: string;
   description: string;
   thumbnail: string;
   content: string;
@@ -28,6 +33,9 @@ export const BlogSchema = new Schema<IBlog>(
     title: { type: String, required: true, trim: true, maxlength: 160 },
     // "free" and "paid" remain accepted for backwards compatibility with existing records.
     status: { type: String, enum: ["draft", "private", "public", "unlisted", "free", "paid"], default: "draft", index: true },
+    accessType: { type: String, enum: ["free", "paid"], default: "free", index: true },
+    price: { type: Number, min: 0, default: 0 },
+    currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
     description: { type: String, default: "", maxlength: 10000 },
     thumbnail: { type: String, default: "" },
     category: { type: [String], default: [], index: true },

@@ -1,4 +1,11 @@
 import React from "react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "About Studic",
+    description: "Learn about Studic, a practical learning platform for coding, IGNOU students and downloadable educational resources.",
+    alternates: { canonical: "/about" },
+};
 
 export default function About() {
     return (

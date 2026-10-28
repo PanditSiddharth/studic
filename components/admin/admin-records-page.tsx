@@ -24,7 +24,8 @@ function valueAt(row: Record<string, unknown>, path: string) {
   if (path === "item") {
     const course = nested(row.course, "title");
     const product = nested(row.product, "title");
-    return String(course || product || row.itemType || "—");
+    const blog = nested(row.blog, "title");
+    return String(course || product || blog || row.itemType || "—");
   }
   const value = path.split(".").reduce(nested, row as unknown);
   if (value == null || value === "") return "—";

@@ -17,7 +17,7 @@ export async function getAdminRecords(kind: AdminRecordKind) {
   let records: unknown[] = [];
   if (kind === "orders") {
     records = await OrderModel.find().sort({ createdOn: -1 }).limit(100)
-      .populate("buyer", "name email").populate("product", "title").populate("course", "title").lean();
+      .populate("buyer", "name email").populate("product", "title").populate("course", "title").populate("blog", "title").lean();
   } else if (kind === "enrollments") {
     records = await EnrollmentModel.find().sort({ enrolledAt: -1 }).limit(100)
       .populate("user", "name email").populate("course", "title slug").lean();

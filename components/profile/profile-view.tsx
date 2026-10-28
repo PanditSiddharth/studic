@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-toastify";
 import {
-  BadgeCheck, BookOpen, CalendarDays, Check, Clock, Download, GraduationCap,
+  BadgeCheck, BookOpen, CalendarDays, Check, Clock, Download, FileText, GraduationCap,
   Loader2, Mail, Package, Pencil, ReceiptText, ShoppingBag, Sparkles, UserRound, X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -388,11 +388,11 @@ export default function ProfileView() {
               {library.orders.map((order) => (
                 <div key={order._id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                    {order.itemType === "course" ? <GraduationCap size={16} /> : <Package size={16} />}
+                    {order.itemType === "course" ? <GraduationCap size={16} /> : order.itemType === "blog" ? <FileText size={16} /> : <Package size={16} />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <Link
-                      href={order.itemType === "course" ? `/course/${order.slug}` : `/product/${order.slug}`}
+                      href={order.itemType === "course" ? `/course/${order.slug}` : order.itemType === "blog" ? `/t/${order.slug}` : `/product/${order.slug}`}
                       className="line-clamp-1 text-sm font-medium hover:text-primary"
                     >
                       {order.title}

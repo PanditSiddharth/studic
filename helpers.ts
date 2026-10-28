@@ -36,28 +36,45 @@ export const blogFilter = (blog: any = {}): Partial<IBlog> => {
     const {
         _id, slug, title, status, description, thumbnail, content, tags, category,
         products, author, publishedAt, updatedAt, createdOn, estimatedMinutes,
-        course, seoTitle, seoDescription
+        course, seoTitle, seoDescription, accessType, price, currency
     }: Partial<IBlog> = blog;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, status, description, thumbnail, content,
         tags, category: normalizeCategories(category), products, author: plainId(author), publishedAt, updatedAt,
-        createdOn, estimatedMinutes, course: plainId(course), seoTitle, seoDescription
+        createdOn, estimatedMinutes, course: plainId(course), seoTitle, seoDescription,
+        accessType, price, currency
     }));
 };
 
 /** Legacy blog records may store a single category as a string. */
 export const normalizeBlogCategories = (value: unknown) => normalizeCategories(value);
 
+/**
+ * Articles created before the separate access field existed used the `status`
+ * column for both visibility and price ("free"/"paid"). This resolves both
+ * shapes into a single answer.
+ */
+export const isPaidBlog = (blog: Partial<IBlog> = {}): boolean =>
+    blog.accessType === "paid" || blog.status === "paid" || Number(blog.price) > 0;
+
+/** Public listings include public and legacy free/paid articles. Unlisted stays link-only. */
+export const isListedBlogStatus = (status?: string) =>
+    ["public", "free", "paid"].includes(String(status || ""));
+
+/** Private and draft articles must never be served to visitors. */
+export const isHiddenBlogStatus = (status?: string) =>
+    status === "private" || status === "draft";
+
 export const courseFilter = (course: any = {}): Partial<ICourse> => {
     const {
         _id, slug, tags, title, status, price, description, thumbnail, content,
         author, publishedAt, createdOn, updatedAt, accessType, currency, level,
-        language, estimatedMinutes, prerequisites, landingPage
+        language, estimatedMinutes, prerequisites, landingPage, products
     }: Partial<ICourse> = course;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, status, tags, price, description, thumbnail,
         content, author: plainId(author), publishedAt, createdOn, updatedAt,
-        accessType, currency, level, language, estimatedMinutes, prerequisites, landingPage
+        accessType, currency, level, language, estimatedMinutes, prerequisites, landingPage, products
     }));
 };
 

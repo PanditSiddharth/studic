@@ -12,7 +12,8 @@ export interface IOrder {
   seller?: mongoose.Types.ObjectId | string;
   product?: mongoose.Types.ObjectId | string;
   course?: mongoose.Types.ObjectId | string;
-  itemType?: "product" | "course";
+  blog?: mongoose.Types.ObjectId | string;
+  itemType?: "product" | "course" | "blog";
   amount?: number;
   currency?: string;
   paymentProvider?: PaymentProvider;
@@ -34,7 +35,8 @@ const OrderSchema = new Schema<IOrder>(
     seller: { type: Schema.Types.ObjectId, ref: "User", index: true },
     product: { type: Schema.Types.ObjectId, ref: "Product" },
     course: { type: Schema.Types.ObjectId, ref: "Course" },
-    itemType: { type: String, enum: ["product", "course"] },
+    blog: { type: Schema.Types.ObjectId, ref: "Blog" },
+    itemType: { type: String, enum: ["product", "course", "blog"] },
     amount: { type: Number, min: 0, required: true, default: 0 },
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
     paymentProvider: { type: String, enum: ["phonepe", "manual", "other"], default: "phonepe" },

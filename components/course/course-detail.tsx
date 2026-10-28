@@ -6,8 +6,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import {
-  ArrowLeft, BadgeCheck, BookOpen, ChevronRight, Clock3, Globe2, Layers,
-  Loader2, Lock, PlayCircle, ShieldCheck, Sparkles,
+  ArrowLeft, BadgeCheck, BookOpen, ChevronRight, Clock3, Download, Globe2,
+  Layers, Loader2, Lock, Package, PlayCircle, ShieldCheck, Sparkles,
 } from "lucide-react";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export default function CourseDetail({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const result = await getCourse({ slug, blogs: true });
+    const result = await getCourse({ slug, blogs: true, products: true });
     if ("error" in result) {
       setError(result.error);
       setCourse(null);
@@ -102,6 +102,9 @@ export default function CourseDetail({ slug }: { slug: string }) {
   }
 
   const lessons = (Array.isArray(course.content) ? course.content : []) as any[];
+  const bundledProducts = (Array.isArray(course.products) ? course.products : []).filter(
+    (product: any) => product && typeof product === "object" && product.slug
+  ) as any[];
   const isFree = course.accessType === "free" || !Number(course.price);
   const minutes = Number(course.estimatedMinutes || 0);
   const duration = minutes >= 60 ? `${Math.round(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ""}` : minutes ? `${minutes}m` : null;
@@ -248,10 +251,12 @@ export default function CourseDetail({ slug }: { slug: string }) {
           ) : (
             <ol className="mt-4 space-y-2">
               {lessons.map((lesson, index) => {
+                const lessonIsPaid = lesson?.accessType === "paid" || lesson?.status === "paid" || Number(lesson?.price) > 0;
+                const lessonLocked = needsPurchase || (lessonIsPaid && !owned);
                 const rowClassName = cn(
                   "group flex w-full items-stretch gap-3 rounded-xl border bg-card p-2.5 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
-                  index === 0 && !needsPurchase && "border-primary/20",
-                  needsPurchase && "hover:border-primary/30"
+                  index === 0 && !lessonLocked && "border-primary/20",
+                  lessonLocked && "hover:border-primary/30"
                 );
                 const rowContent = (
                   <>
@@ -264,7 +269,7 @@ export default function CourseDetail({ slug }: { slug: string }) {
                       ) : (
                         <div className="flex h-full items-center justify-center text-muted-foreground"><PlayCircle size={18} /></div>
                       )}
-                      {needsPurchase ? (
+                      {lessonLocked ? (
                         <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
                           <Lock size={18} />
                         </span>
@@ -278,7 +283,7 @@ export default function CourseDetail({ slug }: { slug: string }) {
                       <p className="line-clamp-2 text-sm font-medium leading-5 group-hover:text-primary">{lesson?.title || "Untitled lesson"}</p>
                       {lesson?.description && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{lesson.description}</p>}
                       <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                        {needsPurchase ? <><Lock size={10} /> Unlock with purchase</> : index === 0 ? "Start here" : "Lesson"} <ChevronRight size={11} />
+                        {lessonLocked ? <><Lock size={10} /> {lessonIsPaid && !needsPurchase ? "Paid article" : "Unlock with purchase"}</> : index === 0 ? "Start here" : "Lesson"} <ChevronRight size={11} />
                       </p>
                     </div>
                   </>
@@ -286,7 +291,7 @@ export default function CourseDetail({ slug }: { slug: string }) {
 
                 return (
                   <li key={String(lesson?._id || index)}>
-                    {needsPurchase ? (
+                    {lessonLocked ? (
                       <button type="button" onClick={openPurchase} className={rowClassName}>
                         {rowContent}
                       </button>
@@ -311,6 +316,67 @@ export default function CourseDetail({ slug }: { slug: string }) {
             <div className="mt-5 flex items-start gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
               <Lock size={14} className="mt-0.5 shrink-0" />
               <p>Enroll to track your progress through every lesson and keep this course in your library.</p>
+            </div>
+          )}
+
+          {bundledProducts.length > 0 && (
+            <div className="mt-10 border-t pt-7">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                    <Package size={12} /> Included downloads
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight">Resources bundled with this course</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Free files are open to everyone. Paid files unlock with enrollment or can be bought separately.
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
+                  <Package size={12} /> {bundledProducts.length} resource{bundledProducts.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {bundledProducts.map((product) => {
+                  const productIsFree = !Number(product.price);
+                  const canDownload = Boolean(owned) && Boolean(product._id);
+                  return (
+                    <div key={String(product._id || product.slug)} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+                      <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        {product.thumbnail ? (
+                          <Image src={product.thumbnail} alt={product.title || ""} fill sizes="80px" className="object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-muted-foreground"><Package size={18} /></div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/product/${product.slug}`} className="line-clamp-2 text-sm font-medium hover:text-primary">
+                          {product.title}
+                        </Link>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                          {productIsFree ? (
+                            <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">Free</span>
+                          ) : owned ? (
+                            <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">Included</span>
+                          ) : (
+                            <span>{formatPrice(product.price, product.currency)}</span>
+                          )}
+                          {product.fileName ? <span className="truncate">{product.fileName}</span> : null}
+                        </p>
+                      </div>
+                      {canDownload ? (
+                        <Button asChild size="sm" className="shrink-0 gap-1.5">
+                          <a href={`/api/download/${product._id}`}><Download size={13} /> Download</a>
+                        </Button>
+                      ) : (
+                        <Button asChild size="sm" variant="outline" className="shrink-0">
+                          <Link href={`/product/${product.slug}`}>{productIsFree ? "Get free" : "Buy"}</Link>
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>

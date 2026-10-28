@@ -37,14 +37,19 @@ export const getCourseDefault = (initial: Partial<ICourse> = {}) => {
     prerequisites: initial?.prerequisites || [],
     landingPage: initial?.landingPage || "",
     content: initial?.content || [],
+    products: toIdList(initial?.products),
     author: initial?.author ? String(initial.author) : "",
   };
 };
 
 export const getBlogDefaults = (initial: Partial<IBlog> = {}) => {
+  const legacyStatus = initial?.status === "free" || initial?.status === "paid" ? initial.status : undefined;
   return {
     ...common(initial),
-    status: initial?.status || "draft",
+    status: legacyStatus ? "public" : initial?.status || "draft",
+    accessType: initial?.accessType || (legacyStatus === "paid" || initial?.status === "paid" || Number(initial?.price) > 0 ? "paid" : "free"),
+    price: initial?.price ?? 0,
+    currency: initial?.currency || "INR",
     content: initial?.content || "",
     category: initial?.category || [],
     products: toIdList(initial?.products),

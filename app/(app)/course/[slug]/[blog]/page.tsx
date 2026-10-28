@@ -7,8 +7,8 @@ import MarkdownPreview from "@uiw/react-markdown-preview";
 import { useTheme } from "next-themes";
 import { toast } from "react-toastify";
 import {
-  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, Loader2, Lock,
-  ShieldCheck, Sparkles,
+  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, Download, Loader2, Lock,
+  Package, ShieldCheck, Sparkles,
 } from "lucide-react";
 import rehypeHighlight from "rehype-highlight";
 import Loader from "@/components/loader";
@@ -17,6 +17,7 @@ import { getCourseLesson } from "@/server-functions/course";
 import { getBlogs } from "@/server-functions/blog";
 import { startCheckout } from "@/server-functions/library";
 import { formatPrice } from "@/components/product/product-card";
+import { cleanArticleContent } from "@/modals/utils";
 import type { IBlog } from "@/modals/blog.model";
 import type { ICourse } from "@/modals/course.model";
 import "@/components/themes/codetheme.css";
@@ -140,6 +141,9 @@ export default function Blog(props: any) {
   const relatedProducts = (Array.isArray(blog?.products) ? blog.products : []) as RelatedProduct[];
   // Draft products are filtered by getBlog's populate match; keep anything with a slug.
   const visibleProducts = relatedProducts.filter((product) => Boolean(product?.slug)).slice(0, 4);
+  const courseProducts = (Array.isArray(course?.products) ? course.products : [])
+    .filter((product: any) => product && typeof product === "object" && product.slug)
+    .slice(0, 8) as any[];
 
   useEffect(() => {
     if (loading) return;
@@ -201,6 +205,7 @@ export default function Blog(props: any) {
   if (locked && course) {
     const lessonCount = Array.isArray(course.content) ? course.content.length : 0;
     const pending = access?.orderStatus === "pending";
+    const courseIsFree = course.accessType === "free" || !Number(course.price);
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
         <Link href={`/course/${course.slug}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
@@ -229,18 +234,20 @@ export default function Blog(props: any) {
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">{course.title}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               {lesson?.title ? `“${lesson.title}” is part of this course. ` : ""}
-              Purchase the course to unlock all {lessonCount} lesson{lessonCount === 1 ? "" : "s"}, track your progress and keep it in your library.
+              {courseIsFree
+                ? `Enroll for free to unlock all ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}, track your progress and keep it in your library.`
+                : `Purchase the course to unlock all ${lessonCount} lesson${lessonCount === 1 ? "" : "s"}, track your progress and keep it in your library.`}
             </p>
 
             <div className="mt-5 flex flex-col gap-4 rounded-xl border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Full course access</p>
-                <p className="mt-0.5 text-2xl font-semibold">{formatPrice(course.price, course.currency)}</p>
+                <p className="mt-0.5 text-2xl font-semibold">{courseIsFree ? "Free" : formatPrice(course.price, course.currency)}</p>
               </div>
               <div className="flex flex-col gap-2 sm:min-w-[230px]">
                 <Button onClick={buyCourse} disabled={busy || pending} className="gap-2">
                   {busy ? <Loader2 size={16} className="animate-spin" /> : pending ? <BadgeCheck size={16} /> : <ShieldCheck size={16} />}
-                  {pending ? "Awaiting confirmation" : access?.signedIn ? "Buy course" : "Sign in to buy"}
+                  {pending ? "Awaiting confirmation" : !access?.signedIn ? (courseIsFree ? "Sign in to enroll" : "Sign in to buy") : courseIsFree ? "Enroll for free" : "Buy course"}
                 </Button>
                 <Button asChild variant="outline">
                   <Link href={`/course/${course.slug}`}>View course details</Link>
@@ -305,7 +312,7 @@ export default function Blog(props: any) {
           }}
           rehypePlugins={[rehypeHighlight]}
           className="mx-auto w-full max-w-4xl rounded-xl p-3 sm:p-5"
-          source={blog.content}
+          source={cleanArticleContent(blog.content)}
         />
 
         {visibleProducts.length > 0 && (
@@ -351,6 +358,44 @@ export default function Blog(props: any) {
 
       <aside className="hidden lg:block min-w-0">
         <div className="sticky top-24 max-h-[calc(100vh-7rem)] space-y-5 overflow-y-auto pl-1">
+          {courseProducts.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Course downloads</h2>
+              <ul className="space-y-2">
+                {courseProducts.map((product) => {
+                  const included = Boolean(access?.owned);
+                  const isFree = !Number(product.price);
+                  return (
+                    <li key={String(product._id || product.slug)} className="rounded-lg border p-2.5">
+                      <Link href={`/product/${product.slug}`} className="group flex gap-2.5">
+                        {product.thumbnail ? (
+                          <img src={product.thumbnail} alt="" className="h-12 w-14 shrink-0 rounded-md object-cover" />
+                        ) : (
+                          <span className="flex h-12 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"><Package size={16} /></span>
+                        )}
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-medium leading-5 group-hover:underline">{product.title}</span>
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            {isFree ? "Free" : included ? "Included with course" : formatPrice(product.price, product.currency)}
+                          </span>
+                        </span>
+                      </Link>
+                      {included && product._id ? (
+                        <a href={`/api/download/${product._id}`} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted">
+                          <Download size={12} /> Download
+                        </a>
+                      ) : (
+                        <Link href={`/product/${product.slug}`} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted">
+                          {isFree ? "Get free" : "Buy separately"}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
           {suggestions.course && (
             <section>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Related course</h2>

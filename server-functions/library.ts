@@ -3,6 +3,7 @@
 import mongoose from "mongoose";
 import connectDB from "@/connectDB";
 import { CourseModel } from "@/modals/course.model";
+import { BlogModel } from "@/modals/blog.model";
 import { EnrollmentModel } from "@/modals/enrollment.model";
 import { OrderModel } from "@/modals/order.model";
 import { ProductModel } from "@/modals/product.model";
@@ -10,7 +11,7 @@ import { UserModel } from "@/modals/user.model";
 import { isSuperAdminEmail, userFilter } from "@/helpers";
 import { getSessionUser } from "./user";
 
-type ItemRef = { productId?: string; courseId?: string };
+type ItemRef = { productId?: string; courseId?: string; blogId?: string };
 
 const isObjectId = (value?: string) => Boolean(value && mongoose.isValidObjectId(value));
 
@@ -19,6 +20,28 @@ const orderId = () =>
 
 const PAID_STATUSES = ["paid"];
 const OPEN_STATUSES = ["pending"];
+
+const isAdminUser = (user: any) => user?.role === "admin" || isSuperAdminEmail(user?.email);
+
+/** IDs of published courses that bundle a given product. */
+async function coursesContainingProduct(productId: string) {
+  return CourseModel.find({ products: productId, status: { $in: ["published", "unlisted"] } }).distinct("_id");
+}
+
+/** IDs of published courses that contain a given article. */
+async function coursesContainingBlog(blogId: string) {
+  return CourseModel.find({ content: blogId, status: { $in: ["published", "unlisted"] } }).distinct("_id");
+}
+
+async function hasCourseEnrollment(userId: string, courseIds: unknown[]) {
+  if (!courseIds.length) return false;
+  const enrollment = await EnrollmentModel.findOne({
+    user: userId,
+    course: { $in: courseIds },
+    status: { $ne: "revoked" },
+  }).select("_id");
+  return Boolean(enrollment);
+}
 
 type AccessResult = {
   signedIn: boolean;
@@ -43,16 +66,43 @@ export async function getItemAccess(input: ItemRef): Promise<AccessResult> {
   const buyer = session._id;
 
   try {
+    if (isAdminUser(session)) {
+      return {
+        signedIn: true,
+        owned: true,
+        enrolled: Boolean(input.courseId),
+        orderStatus: null,
+        orderId: null,
+        progressPercent: 0,
+      };
+    }
+
     if (isObjectId(input.productId)) {
       const order = await OrderModel.findOne({ buyer, product: input.productId })
         .sort({ createdOn: -1 })
         .select("status orderId");
+      // A product bundled with a course is already available to its students.
+      const bundled = order && PAID_STATUSES.includes(order.status)
+        ? false
+        : await hasCourseEnrollment(String(buyer), await coursesContainingProduct(String(input.productId)));
       return {
         signedIn: true,
-        owned: Boolean(order && PAID_STATUSES.includes(order.status)),
-        enrolled: false,
+        owned: Boolean((order && PAID_STATUSES.includes(order.status)) || bundled),
+        enrolled: Boolean(bundled),
         orderStatus: order?.status ?? null,
         orderId: order?.orderId ?? null,
+        progressPercent: 0,
+      };
+    }
+
+    if (isObjectId(input.blogId)) {
+      const enrolled = await hasCourseEnrollment(String(buyer), await coursesContainingBlog(String(input.blogId)));
+      return {
+        signedIn: true,
+        owned: enrolled,
+        enrolled,
+        orderStatus: null,
+        orderId: null,
         progressPercent: 0,
       };
     }
@@ -175,6 +225,19 @@ export async function startCheckout(input: ItemRef): Promise<CheckoutResult> {
       };
     }
 
+    if (isObjectId(input.blogId)) {
+      const blog = await BlogModel.findOne({
+        _id: input.blogId,
+        status: { $nin: ["draft", "private"] },
+      });
+      if (!blog) return { error: "This article is not available" };
+
+      const access = await getItemAccess({ blogId: String(blog._id) });
+      if (access.owned) return { status: "granted" as const, free: true };
+
+      return { error: "This article is unlocked through a course enrollment" };
+    }
+
     if (isObjectId(input.courseId)) {
       const course = await CourseModel.findOne({ _id: input.courseId, status: "published" });
       if (!course) return { error: "This course is not available" };
@@ -255,6 +318,7 @@ export async function getMyLibrary() {
       OrderModel.find({ buyer: session._id })
         .populate("product", "title slug thumbnail description price currency fileName fileSize mimeType downloadLimit")
         .populate("course", "title slug thumbnail price currency accessType")
+        .populate("blog", "title slug thumbnail price currency accessType")
         .sort({ createdOn: -1 })
         .lean(),
     ]);
@@ -290,10 +354,10 @@ export async function getMyLibrary() {
     const products: any[] = [];
     const updatedOrders = orders.map((order: any) => {
       const isPaid = order.status === "paid";
-      const item = order.product || order.course;
+      const item = order.product || order.course || order.blog;
       const itemTitle = item?.title || "Removed item";
       const itemSlug = item?.slug || "";
-      const itemType = order.itemType || (order.product ? "product" : order.course ? "course" : undefined);
+      const itemType = order.itemType || (order.product ? "product" : order.course ? "course" : order.blog ? "blog" : undefined);
 
       if (order.product && isPaid) {
         const key = String(order.product._id);
@@ -414,14 +478,18 @@ export async function getDownloadUrl(productId: string) {
     if (!product.fileLink) return { error: "No file has been attached to this product yet" };
 
     const isOwner = product.seller && String(product.seller) === String(session._id);
-    if (session.role === "admin" || isSuperAdminEmail(session.email) || isOwner) {
+    if (isAdminUser(session) || isOwner) {
       return { url: product.fileLink };
     }
 
     const order = await OrderModel.findOne({ buyer: session._id, product: product._id, status: "paid" }).select("_id");
-    if (!order) return { error: "Purchase this product to download the file" };
+    if (order) return { url: product.fileLink };
 
-    return { url: product.fileLink };
+    // Products bundled with a course can be downloaded by enrolled students.
+    const bundled = await hasCourseEnrollment(String(session._id), await coursesContainingProduct(String(product._id)));
+    if (bundled) return { url: product.fileLink };
+
+    return { error: "Purchase this product to download the file" };
   } catch (error: any) {
     console.error("Error resolving download", error);
     return { error: error?.message || "Could not prepare your download" };

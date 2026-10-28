@@ -55,8 +55,9 @@ export async function deleteAdminContent(kind: ContentKind, ids: string | string
     const result = await BlogModel.deleteMany({ _id: { $in: list } });
     return { success: true, deletedCount: result.deletedCount || 0 };
   }
-  // Products referenced by blog articles are detached before deletion.
+  // Products referenced by blog articles and course bundles are detached before deletion.
   await BlogModel.updateMany({ products: { $in: list } }, { $pull: { products: { $in: list } } });
+  await CourseModel.updateMany({ products: { $in: list } }, { $pull: { products: { $in: list } } });
   const result = await ProductModel.deleteMany({ _id: { $in: list } });
   return { success: true, deletedCount: result.deletedCount || 0 };
 }
@@ -73,6 +74,26 @@ export async function updateAdminVisibility(kind: "courses" | "blogs", id: strin
   const updated = kind === "courses"
     ? await CourseModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean()
     : await BlogModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean();
+  if (!updated) return { error: "Record not found." };
+  return { success: true, item: JSON.parse(JSON.stringify(updated)) };
+}
+
+/** Toggle free/paid access for article records without touching visibility. */
+export async function updateAdminAccess(kind: "blogs", id: string, accessType: "free" | "paid") {
+  if (!(await requireAdmin())) return { error: "Unauthorized" as const };
+  if (!mongoose.isValidObjectId(id)) return { error: "Invalid record id." };
+  if (!["free", "paid"].includes(accessType)) return { error: "Invalid access type." };
+  await connectDB();
+  const existing = await BlogModel.findById(id).select("status").lean();
+  if (!existing) return { error: "Record not found." };
+  // Move records that still use the legacy free/paid status onto the separate
+  // visibility + access fields.
+  const legacyStatus = ["free", "paid"].includes(String(existing.status));
+  const update = accessType === "free"
+    ? { $set: { accessType, price: 0, ...(legacyStatus ? { status: "public" } : {}) } }
+    : { $set: { accessType, ...(legacyStatus ? { status: "public" } : {}) } };
+  const updated = await BlogModel.findByIdAndUpdate(id, update, { new: true })
+    .select("_id status accessType price").lean();
   if (!updated) return { error: "Record not found." };
   return { success: true, item: JSON.parse(JSON.stringify(updated)) };
 }

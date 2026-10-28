@@ -1,6 +1,7 @@
 import type { IBlog } from "@/modals/blog.model";
 import type { ICourse } from "@/modals/course.model";
 import { getCourse } from "@/server-functions/course";
+import { getProductOptions } from "@/server-functions/product";
 import AddCourseForm from "./course-form";
 
 export default async function AddCoursePage({
@@ -14,7 +15,7 @@ export default async function AddCoursePage({
   let loadError: string | undefined;
 
   if (params.slug || params._id) {
-    const result = await getCourse({ slug: params.slug, _id: params._id, blogs: true });
+    const result = await getCourse({ slug: params.slug, _id: params._id, blogs: true, products: true });
     if ("error" in result) {
       loadError = result.error;
     } else {
@@ -29,5 +30,7 @@ export default async function AddCoursePage({
     }
   }
 
-  return <AddCourseForm initialValue={initialValue} initialPlaylist={initialPlaylist} loadError={loadError} />;
+  const products = await getProductOptions();
+
+  return <AddCourseForm initialValue={initialValue} initialPlaylist={initialPlaylist} productOptions={products} loadError={loadError} />;
 }

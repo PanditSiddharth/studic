@@ -172,6 +172,7 @@ export default function BlogsBrowser() {
           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {blogs.map((blog) => {
               const href = blog.category?.length ? `/t/${blog.category[0]}/${blog.slug}` : `/t/${blog.slug}`;
+              const isPaid = blog.accessType === "paid" || blog.status === "paid" || Number(blog.price) > 0;
               return (
                 <article key={String(blog._id || blog.slug)} className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
                   <Link href={href} className="relative block aspect-[16/9] overflow-hidden bg-muted">
@@ -179,6 +180,11 @@ export default function BlogsBrowser() {
                       <Image src={blog.thumbnail} alt={blog.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-muted-foreground"><FileText size={26} /></div>
+                    )}
+                    {isPaid && (
+                      <span className="absolute right-2.5 top-2.5 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold">
+                        {Number(blog.price) > 0 ? new Intl.NumberFormat("en-IN", { style: "currency", currency: blog.currency || "INR", maximumFractionDigits: 0 }).format(Number(blog.price)) : "Paid"}
+                      </span>
                     )}
                   </Link>
                   <div className="flex flex-1 flex-col p-4">

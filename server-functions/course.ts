@@ -4,7 +4,7 @@ import { CourseModel, ICourse } from "@/modals/course.model";
 import { BlogModel } from "@/modals/blog.model";
 import { getSessionUser } from "./user";
 import mongoose from "mongoose";
-import { courseFilter, blogFilter } from "@/helpers";
+import { courseFilter, blogFilter, isHiddenBlogStatus, isPaidBlog } from "@/helpers";
 import { getItemAccess } from "./library";
 
 export const addOrUpdateCourse = async (course: Partial<ICourse>): Promise<Partial<ICourse> | { error: string }> => {
@@ -29,6 +29,7 @@ export const addOrUpdateCourse = async (course: Partial<ICourse>): Promise<Parti
 
 interface GetCourseOptions{
     blogs?: boolean;
+    products?: boolean;
     slug?: string;
     _id?: string;
 }
@@ -45,13 +46,33 @@ export async function getCourse(options: GetCourseOptions): Promise<Partial<ICou
         else if(options?._id)
             query = { _id: options._id }
         else return {error: "Slug or _id is required"}
-        if(options?.blogs)
-        course = await CourseModel.findOne(query).populate("content", 
-            "title description thumbnail slug") as ICourse;
-        else 
-        course = await CourseModel.findOne(query)
 
+        const user = await getSessionUser();
+        const isAdmin = user?.role === "admin";
+
+        course = await CourseModel.findOne(query)
         if (!course) return {error: "No course found"}
+
+        // Draft/private/archived courses are hidden from visitors, even when
+        // they have the direct link. Unlisted remains link-only.
+        if (!isAdmin && ["draft", "private", "archived"].includes(String(course.status)))
+            return {error: "No course found"}
+
+        if(options?.blogs)
+            await course.populate({
+                path: "content",
+                // Private and draft articles must not surface inside a course.
+                match: isAdmin ? undefined : { status: { $nin: ["draft", "private"] } },
+                select: "title description thumbnail slug status accessType price currency",
+            });
+
+        if(options?.products)
+            await course.populate({
+                path: "products",
+                match: isAdmin ? undefined : { $or: [{ status: "published" }, { status: { $exists: false } }] },
+                select: "title slug thumbnail description price currency tags status fileName fileSize",
+            });
+
         return courseFilter(course);
     } catch (error: any) {
         console.error(error);
@@ -76,11 +97,20 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
     await connectDB();
 
     try {
+        const user = await getSessionUser();
+        const isAdmin = user?.role === "admin";
+
         const course = await CourseModel.findOne({ slug: options.courseSlug })
-            .populate("content", "title description thumbnail slug") as ICourse;
+            .populate("content", "title description thumbnail slug status")
+            .populate({
+                path: "products",
+                match: { $or: [{ status: "published" }, { status: { $exists: false } }] },
+                select: "title slug thumbnail description price currency status fileName",
+            }) as ICourse;
 
         if (!course) return { error: "This course could not be found" };
-        if (course.status !== "published") return { error: "This course is not available" };
+        if (!isAdmin && !["published", "unlisted"].includes(String(course.status)))
+            return { error: "This course is not available" };
 
         const lessonIds = new Set(
             (Array.isArray(course.content) ? course.content : [])
@@ -97,8 +127,14 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
         if (!lesson || !lessonIds.has(String(lesson._id)))
             return { error: "This lesson is not part of the course" };
 
+        // A private/draft article stays hidden even when it is attached to a course.
+        if (!isAdmin && isHiddenBlogStatus(lesson.status))
+            return { error: "This lesson is not available" };
+
         const access = await getItemAccess({ courseId: String(course._id) });
+        const blogAccess = await getItemAccess({ blogId: String(lesson._id) });
         const isPaid = course.accessType !== "free" && Number(course.price) > 0;
+        const lessonPaid = isPaidBlog(lesson);
         const summary = {
             _id: String(lesson._id),
             title: lesson.title,
@@ -107,7 +143,12 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
             description: lesson.description,
         };
 
-        if (isPaid && !access.owned) {
+        const locked = !isAdmin && (
+            (isPaid && !access.owned) ||
+            (lessonPaid && !access.owned && !blogAccess.owned)
+        );
+
+        if (locked) {
             return JSON.parse(JSON.stringify({
                 locked: true,
                 course: courseFilter(course),

@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import {
-  ArrowLeft, BookOpen, Clock3, Eye, FileText, Globe2, ImageIcon,
+  ArrowLeft, BookOpen, Clock3, Eye, FileText, Globe2, ImageIcon, IndianRupee,
   Loader2, Package, Search, Sparkles, Tag, TriangleAlert,
 } from "lucide-react";
 import { ZodBlogSchema } from "@/modals/zod";
@@ -33,11 +33,10 @@ type BlogFormValues = z.infer<typeof ZodBlogSchema>;
 
 const statusOptions = [
   { value: "draft", label: "Draft" },
-  { value: "private", label: "Private" },
+  { value: "private", label: "Private (no link or course access)" },
   { value: "public", label: "Public" },
   { value: "unlisted", label: "Unlisted (link only)" },
-  { value: "free", label: "Free (legacy access)" },
-  { value: "paid", label: "Paid (legacy access)" },
+  { value: "paid", label: "Paid (course access only)" },
 ];
 
 export default function AddBlogForm({
@@ -66,6 +65,7 @@ export default function AddBlogForm({
   const seoTitle = form.watch("seoTitle") || "";
   const seoDescription = form.watch("seoDescription") || "";
   const status = form.watch("status") || "draft";
+  const accessType = form.watch("accessType");
 
   const previewTitle = seoTitle || title || "Article title";
   const previewDescription = seoDescription || description || "Add a short description so readers know what this article covers.";
@@ -112,17 +112,19 @@ export default function AddBlogForm({
       form.setError("slug", { message: "Use lowercase letters, numbers and single hyphens only" });
       return;
     }
-    if (data.status === "public" && !(data.category || []).length) {
+    if (["public", "paid"].includes(data.status) && !(data.category || []).length) {
       form.setError("category", { message: "Add a category — it is part of the public article URL" });
       toast.error("Add a category before publishing this article.");
       return;
     }
-
     try {
-      const publishedAt = data.status === "public" ? (data.publishedAt ?? new Date()) : data.publishedAt;
+      const courseOnly = data.status === "paid" || data.accessType === "paid";
+      const publishedAt = ["public", "paid"].includes(data.status) ? (data.publishedAt ?? new Date()) : data.publishedAt;
       const payload = blogFilter({
         ...data,
         _id: isEditing ? initialValue?._id : undefined,
+        accessType: courseOnly ? "paid" : "free",
+        price: 0,
         products: toIdList(data.products),
         author: data.author || session?.user?._id,
         publishedAt,
@@ -340,6 +342,40 @@ export default function AddBlogForm({
                 description="Used on cards and at the top of the article."
                 input={(field) => <ImageUpload onChange={field.onChange} img_src={field.value} />}
               />
+            </FormSection>
+
+            <FormSection title="Access & pricing" description="Choose whether the full article is free or requires purchase." icon={IndianRupee}>
+              <MyField form={form} name="accessType" label="Access type" input={(field) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: "free", label: "Free", hint: "Readable by everyone" },
+                      { value: "paid", label: "Course-only", hint: "Unlock only through a course" },
+                    ] as const).map((option) => {
+                      const active = field.value === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            field.onChange(option.value);
+                            if (option.value === "free") form.setValue("price", 0, { shouldDirty: true });
+                          }}
+                          className={`rounded-lg border p-3 text-left transition-colors ${active ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-muted/40"}`}
+                        >
+                          <span className="block text-sm font-medium">{option.label}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{option.hint}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              />
+
+              {accessType === "paid" ? (
+                <p className="rounded-lg border border-dashed px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  This article is readable only by learners enrolled in a course that includes it. The course itself may be free or paid.
+                </p>
+              ) : null}
             </FormSection>
 
             <FormSection title="Organisation" description="Help readers find this article." icon={Tag}>

@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Plus, Pencil, Trash2, RefreshCw, ExternalLink } from "lucide-react";
 import { toast } from "react-toastify";
-import { deleteAdminContent, searchAdminContent, updateAdminVisibility } from "@/server-functions/admin-content";
+import { deleteAdminContent, searchAdminContent, updateAdminAccess, updateAdminVisibility } from "@/server-functions/admin-content";
 
 type Kind = "courses" | "blogs" | "products";
-type Item = { _id: string; title: string; slug: string; status?: string; price?: number; accessType?: string; updatedAt?: string; createdOn?: string; description?: string };
+type Item = { _id: string; title: string; slug: string; status?: string; accessType?: string; price?: number; updatedAt?: string; createdOn?: string; description?: string; category?: string[] };
 
 const settings: Record<Kind, { title: string; singular: string; createHref: string; editHref: (item: Item) => string }> = {
   courses: { title: "Courses", singular: "course", createHref: "/admin/add-course", editHref: (item) => `/admin/add-course?slug=${encodeURIComponent(item.slug)}` },
@@ -40,7 +40,11 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
   }, [kind, search, page]);
 
   useEffect(() => { void load(); }, [load]);
-  const filtered = status === "all" ? items : items.filter((item) => item.status === status);
+  const filtered = status === "all"
+    ? items
+    : status === "free" || status === "paid"
+      ? items.filter((item) => (item.accessType || (item.status === "paid" ? "paid" : "free")) === status)
+      : items.filter((item) => item.status === status);
 
   const remove = (item: Item) => {
     if (!window.confirm(`Delete this ${cfg.singular}: "${item.title}"? This cannot be undone.`)) return;
@@ -55,6 +59,21 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
 
   const changeStatus = (item: Item, nextStatus: string) => {
     if (kind === "products") { toast.info("Product status editing is not enabled in this view yet."); return; }
+    if (nextStatus === "free" || nextStatus === "paid") {
+      if (kind !== "blogs") return;
+      if (nextStatus === "paid" && !(Number(item.price) > 0)) {
+        toast.error("Add a price in the article editor, then switch it to paid.");
+        return;
+      }
+      startTransition(async () => {
+        const result = await updateAdminAccess("blogs", item._id, nextStatus);
+        if ("error" in result) { toast.error(result.error); return; }
+        toast.success(nextStatus === "paid" ? "Article marked as paid" : "Article is now free");
+        await load();
+        router.refresh();
+      });
+      return;
+    }
     startTransition(async () => {
       const result = await updateAdminVisibility(kind, item._id, nextStatus);
       if ("error" in result) { toast.error(result.error); return; }
@@ -73,7 +92,7 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
     <section className="overflow-hidden rounded-2xl border bg-card">
       <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center">
         <div className="relative flex-1"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"/><input value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} placeholder={`Search by title, slug, description or tags…`} className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary"/></div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 rounded-lg border bg-background px-3 text-sm"><option value="all">All statuses</option>{(kind === "courses" ? ["draft","private","published","unlisted","archived"] : kind === "blogs" ? ["draft","private","public","unlisted","free","paid"] : ["draft","published","archived"]).map((value) => <option key={value} value={value}>{value[0].toUpperCase()+value.slice(1)}</option>)}</select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 rounded-lg border bg-background px-3 text-sm"><option value="all">All statuses</option>{(kind === "courses" ? ["draft","private","published","unlisted","archived"] : kind === "blogs" ? ["draft","private","public","unlisted","free","paid"] : ["draft","published","archived"]).map((value) => <option key={value} value={value}>{value === "free" ? "Free access" : value === "paid" ? "Paid access" : value[0].toUpperCase()+value.slice(1)}</option>)}</select>
         <button onClick={() => void load()} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm hover:bg-muted disabled:opacity-50"><RefreshCw size={15}/> Refresh</button>
       </div>
       <div className="overflow-x-auto">
@@ -82,13 +101,18 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
           <tbody className="divide-y">{filtered.map((item) => <tr key={item._id} className="hover:bg-muted/20">
             <td className="max-w-sm px-5 py-4"><p className="truncate font-medium">{item.title || "(Untitled)"}</p><p className="mt-1 truncate text-xs text-muted-foreground">/{item.slug}</p></td>
             <td className="px-4 py-4"><span className="rounded-full border px-2.5 py-1 text-xs capitalize">{item.status || "draft"}</span></td>
-            <td className="px-4 py-4 text-muted-foreground">{kind === "products" || item.accessType === "paid" ? new Intl.NumberFormat("en-IN", { style:"currency", currency:"INR", maximumFractionDigits:2 }).format(item.price || 0) : item.accessType || "—"}</td>
+            <td className="px-4 py-4 text-muted-foreground">{
+              kind === "products" || item.accessType === "paid" || item.status === "paid"
+                ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(item.price || 0)
+                : kind === "blogs" ? "Free" : item.accessType || "—"
+            }</td>
             <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString("en-IN") : item.createdOn ? new Date(item.createdOn).toLocaleDateString("en-IN") : "—"}</td>
             <td className="px-5 py-4"><div className="flex justify-end gap-2">
-              {kind !== "products" && <select aria-label={`Visibility for ${item.title}`} value={item.status || "draft"} disabled={busy} onChange={(e) => changeStatus(item, e.target.value)} className="max-w-28 rounded-md border bg-background px-2 py-1 text-xs"><option value="draft">Draft</option><option value="private">Private</option>{kind === "courses" ? <option value="published">Public</option> : <option value="public">Public</option>}<option value="unlisted">Unlisted</option>{kind === "courses" && <option value="archived">Archived</option>}</select>}
+              {kind !== "products" && <select aria-label={`Visibility for ${item.title}`} value={["free", "paid"].includes(String(item.status)) ? "public" : item.status || "draft"} disabled={busy} onChange={(e) => changeStatus(item, e.target.value)} className="max-w-28 rounded-md border bg-background px-2 py-1 text-xs"><option value="draft">Draft</option><option value="private">Private</option>{kind === "courses" ? <option value="published">Public</option> : <option value="public">Public</option>}<option value="unlisted">Unlisted</option>{kind === "courses" && <option value="archived">Archived</option>}</select>}
+              {kind === "blogs" && <select aria-label={`Access for ${item.title}`} value={item.accessType === "paid" || item.status === "paid" ? "paid" : "free"} disabled={busy} onChange={(e) => changeStatus(item, e.target.value)} className="max-w-24 rounded-md border bg-background px-2 py-1 text-xs"><option value="free">Free</option><option value="paid">Paid</option></select>}
               <Link aria-label={`Edit ${item.title}`} href={cfg.editHref(item)} className="rounded-md border p-2 hover:bg-muted"><Pencil size={15}/></Link>
               <button aria-label={`Delete ${item.title}`} disabled={busy} onClick={() => remove(item)} className="rounded-md border p-2 text-destructive hover:bg-destructive/10 disabled:opacity-50"><Trash2 size={15}/></button>
-              <Link aria-label={`Open ${item.title}`} href={kind === "courses" ? `/course/${item.slug}` : kind === "blogs" ? `/blog/${item.slug}` : `/product/${item.slug}`} target="_blank" className="rounded-md border p-2 hover:bg-muted"><ExternalLink size={15}/></Link>
+              <Link aria-label={`Open ${item.title}`} href={kind === "courses" ? `/course/${item.slug}` : kind === "blogs" ? `/t/${item.slug}` : `/product/${item.slug}`} target="_blank" className="rounded-md border p-2 hover:bg-muted"><ExternalLink size={15}/></Link>
             </div></td>
           </tr>)}</tbody>
         </table>

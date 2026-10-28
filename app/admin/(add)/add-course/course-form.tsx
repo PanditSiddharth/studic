@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import {
   ArrowDown, ArrowLeft, ArrowUp, BookOpen, Clock3, Eye, Globe2, GraduationCap,
-  ImageIcon, IndianRupee, Languages, ListVideo, Loader2, Plus, Tags,
+  ImageIcon, IndianRupee, Languages, ListVideo, Loader2, Package, Plus, Tags,
   Trash2, TriangleAlert,
 } from "lucide-react";
 import { ZodCourseSchema } from "@/modals/zod";
@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/product/image-upload";
 import { FormActionsBar, FormPageHeader, FormSection, StatusSelect } from "@/components/admin/form-ui";
 import { TagInput } from "@/components/admin/tag-input";
+import { ProductPicker } from "@/components/admin/product-picker";
+import type { ProductOption } from "@/server-functions/product";
 import { courseFilter } from "@/helpers";
 import { addOrUpdateCourse } from "@/server-functions/course";
 import { MyField } from "../myField";
@@ -52,10 +54,12 @@ const PLACEHOLDER = "/placeholder.png";
 export default function AddCourseForm({
   initialValue,
   initialPlaylist = [],
+  productOptions = [],
   loadError,
 }: {
   initialValue?: Partial<ICourse>;
   initialPlaylist?: IBlog[];
+  productOptions?: ProductOption[];
   loadError?: string;
 }) {
   const router = useRouter();
@@ -142,6 +146,7 @@ export default function AddCourseForm({
         author: data.author || session?.user?._id,
         price: data.accessType === "paid" ? data.price : 0,
         content: toIdList(data.content),
+        products: toIdList(data.products),
         publishedAt,
       });
 
@@ -345,6 +350,27 @@ export default function AddCourseForm({
                   <span className="text-xs text-muted-foreground">Add existing articles from your library — nothing is duplicated.</span>
                 </button>
               )}
+            </FormSection>
+
+            <FormSection
+              title="Included downloads"
+              description="Attach products such as PDFs, notes or templates. Enrolled students can download them from the course page."
+              icon={Package}
+            >
+              <MyField
+                form={form}
+                name="products"
+                label="Products"
+                description="Paid products stay locked until a student enrolls or buys them separately."
+                input={(field) => (
+                  <ProductPicker
+                    value={toIdList(field.value)}
+                    onChange={field.onChange}
+                    options={productOptions}
+                    placeholder="Search products to include…"
+                  />
+                )}
+              />
             </FormSection>
           </div>
 

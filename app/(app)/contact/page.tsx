@@ -1,4 +1,11 @@
 import React from "react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contact Studic",
+  description: "Contact the Studic team for help with courses, articles, products and your learner account.",
+  alternates: { canonical: "/contact" },
+};
 
 export default function Contact() {
   return (

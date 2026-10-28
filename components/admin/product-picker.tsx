@@ -143,7 +143,7 @@ export function ProductPicker({
       </div>
 
       <p className="text-[11px] text-muted-foreground">
-        {value.length} selected · only public products appear on the article page
+        {value.length} selected · only published products appear publicly
       </p>
     </div>
   );
