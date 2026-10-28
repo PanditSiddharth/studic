@@ -67,9 +67,8 @@ console.log(showToast)
                         <Image
                             src={user?.image + ""}
                             alt={user.name}
-                            layout="fill"
-                            objectFit="cover"
-                            className="rounded-full p-1"
+                            fill
+                    className="object-cover rounded-full p-1"
                         />
                         {isOwner &&
                             <div className="relative">
