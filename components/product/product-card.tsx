@@ -30,9 +30,8 @@ const ProductCard = ({ product, options, className }: ProductOptions) => {
                 <Image
                     src={product.thumbnail!}
                     alt={product.title! || "no title"}
-                    layout="fill"
-                    objectFit="cover"
-                    className=""
+                    fill
+                    className="object-cover"
                 />
             </Link>
         </CardHeader>

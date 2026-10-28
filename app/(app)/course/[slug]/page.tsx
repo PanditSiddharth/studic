@@ -83,8 +83,8 @@ const Course = ({ params }: { params: Promise<any> }) => {
                 <Image
                   src={blog.thumbnail}
                   alt={blog.title}
-                  layout="fill"
-                  objectFit="cover"
+                  fill
+                    className="object-cover"
                 />
               </div>
    
