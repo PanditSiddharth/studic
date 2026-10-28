@@ -1,42 +1,76 @@
+import mongoose, { Schema, type Model } from "mongoose";
 
-import mongoose, { Schema } from "mongoose";
-// eslint-disable-next-line 
+export type UserRole = "student" | "seller" | "admin";
+export type UserStatus = "active" | "suspended" | "deleted";
 
 export function getId() {
-    let userid = new Date().getTime() - 1707805802621 + Math.floor(Math.random() * 100)
-    const alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let result = '';
-    do {
-        result = alphabet[userid % 62] + result;
-        userid = Math.floor(userid / 62);
-    } while (userid > 0);
-    return result;
+  const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let value = Date.now() - 1707805802621 + Math.floor(Math.random() * 100);
+  let result = "";
+  do {
+    result = alphabet[value % alphabet.length] + result;
+    value = Math.floor(value / alphabet.length);
+  } while (value > 0);
+  return result;
 }
 
 export interface IUser {
-    _id?: string;
-    about?: string;
-    username?: string;
-    name: string;
-    email: string;
-    password?: string;
-    phone?: number;
-    image?: string;
-    role?: "student" | "admin";
-    createdOn?: Date;
+  _id?: string;
+  username?: string;
+  name: string;
+  email: string;
+  password?: string;
+  about?: string;
+  phone?: string | number;
+  image?: string;
+  role?: UserRole;
+  status?: UserStatus;
+  account?: string;
+  ifsc?: string;
+  emailVerified?: Date | null;
+  lastLoginAt?: Date;
+  createdOn?: Date;
+  updatedAt?: Date;
 }
 
-export const UserSchema = new Schema<IUser>({
-    username: { type: String, unique: true, default: getId() },
-    name: { type: String, required: true },
-    password: { type: String },
-    about: { type: String, required: false },
-    phone: { type: Number, required: false },
-    email: { type: String, required: true },
-    role: { type: String, default: "student" },
+const SellerProfileSchema = new Schema(
+  {
+    account: { type: String, trim: true, select: false },
+    ifsc: { type: String, trim: true, uppercase: true, select: false },
+    payoutEnabled: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+export const UserSchema = new Schema<IUser>(
+  {
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+      default: getId,
+      minlength: 2,
+      maxlength: 30,
+    },
+    name: { type: String, required: true, trim: true, maxlength: 100 },
+    email: { type: String, required: true, unique: true, trim: true, lowercase: true, index: true },
+    password: { type: String, select: false },
+    about: { type: String, trim: true, maxlength: 500 },
+    phone: { type: String, trim: true, maxlength: 20 },
     image: { type: String, default: "" },
-    createdOn: { type: Date, default: Date.now }
-})
+    role: { type: String, enum: ["student", "seller", "admin"], default: "student", index: true },
+    status: { type: String, enum: ["active", "suspended", "deleted"], default: "active", index: true },
+    account: { type: String, trim: true, select: false },
+    ifsc: { type: String, trim: true, uppercase: true, select: false },
+    emailVerified: { type: Date, default: null },
+    lastLoginAt: { type: Date },
+  },
+  { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
+);
 
-export const UserModel = mongoose.models?.User || mongoose.model<IUser>("User", UserSchema)
+UserSchema.index({ role: 1, status: 1, createdOn: -1 });
 
+export const UserModel: Model<IUser> =
+  (mongoose.models.User as Model<IUser>) || mongoose.model<IUser>("User", UserSchema);
