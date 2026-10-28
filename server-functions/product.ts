@@ -77,11 +77,19 @@ export async function addOrUpdateProducts(data: Partial<IProduct> | Partial<IPro
         const user = await getSessionUser()
         if (!user) return { error: "Please Login first" }
         const arrData = Array.isArray(data) ? data : [data]
-        const options = { new: true, upsert: true, setDefaultsOnInsert: true };
+        const options = { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true };
         const results = await Promise.all(arrData.map(async (productData) => {
-            const product = await ProductModel.findByIdAndUpdate(
-                { _id: productData._id || new mongoose.Types.ObjectId() },
-                productData, options);
+            const id = productData._id && mongoose.isValidObjectId(productData._id)
+                ? productData._id
+                : new mongoose.Types.ObjectId();
+            const existing = productData._id ? await ProductModel.findById(id).select("seller") : null;
+            if (existing && user.role !== "admin" && String(existing.seller) !== String(user._id)) {
+                return { error: "You can only update your own products" };
+            }
+            const safeData: Partial<IProduct> = { ...productData };
+            delete safeData._id;
+            if (!existing || user.role !== "admin") safeData.seller = user._id;
+            const product = await ProductModel.findOneAndUpdate({ _id: id }, safeData, options);
             if (!product) return { error: "Something went wrong in updating product server side" }
             return productFilter(product)
         }));
