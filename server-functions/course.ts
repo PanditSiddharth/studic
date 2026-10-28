@@ -8,10 +8,9 @@ import { courseFilter, err } from "@/helpers";
 
 export const addOrUpdateCourse = async (course: Partial<ICourse>): Promise<Partial<ICourse> | { error: string }> => {
     try {
-        console.log(course)
         await connectDB();
         const user = await getSessionUser();
-        if (!user) return { error: "Please Login first" };
+        if (!user || user.role !== "admin") return { error: "Administrator access required" };
 
         const options = { new: true, upsert: true, setDefaultsOnInsert: true };
         const courseRes = await CourseModel.findOneAndUpdate(
