@@ -10,13 +10,8 @@ import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 
 const Course = ({ params }: { params: Promise<any> }) => {
-  const pd = useDataStore<ICourse | undefined>("course", undefined)()
-  const ft = useDataStore<boolean>("footer", false)()
-  const prs = React.use(params)
-  const [loading, setLoading] = useState(true)
-  useEffect(() => { ft.setData(false) }, [])
-
-  useEffect(() => {
+  const pd = useDataStore<ICourse | undefined>("course", undefined)()  const prs = React.use(params)
+  const [loading, setLoading] = useState(true)  useEffect(() => {
     if (prs && prs.slug) {
       console.log(prs)
       getCourse({ blogs: true, slug: prs.slug }).then(course => {
