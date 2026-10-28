@@ -15,6 +15,7 @@ import "@/components/themes/codetheme.css";
 
 type TocItem = { id: string; title: string; level: number };
 type Suggestion = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string };
+type RelatedProduct = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string; price?: number; currency?: string; status?: string };
 type Suggestions = { course?: Suggestion; blogs: Suggestion[] };
 
 function createSlug(title: string) {
@@ -52,7 +53,7 @@ export default function Blog(props: any) {
     let cancelled = false;
     const fetchBlog = async () => {
       try {
-        const blog = await getBlog({ slug: params?.blog });
+        const blog = await getBlog({ slug: params?.blog, products: true });
         if (cancelled) return;
         if ("error" in blog) toast.error(blog.error);
         else bg.setData(blog);
@@ -92,6 +93,8 @@ export default function Blog(props: any) {
   }, [bg?.data?.slug, bg?.data?.tags, bg?.data?.category, bg?.data?.title, params?.slug]);
 
   const headings = useMemo(() => extractHeadings(bg?.data?.content ?? ""), [bg?.data?.content]);
+  const relatedProducts = (Array.isArray(bg?.data?.products) ? bg.data.products : []) as RelatedProduct[];
+  const visibleProducts = relatedProducts.filter((product) => product?.slug && product?.status === "published").slice(0, 4);
 
   useEffect(() => {
     if (loading) return;
@@ -137,6 +140,46 @@ export default function Blog(props: any) {
           className="mx-auto w-full max-w-4xl rounded-xl p-3 sm:p-5"
           source={bg.data.content}
         />
+
+        {visibleProducts.length > 0 && (
+          <section className="mx-auto mt-8 w-full max-w-4xl border-t border-border pt-6">
+            <div className="mb-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Keep learning</p>
+              <h2 className="mt-1 text-xl font-semibold">Related products</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Useful resources selected for this article.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {visibleProducts.map((product) => (
+                <Link
+                  key={product._id || product.slug}
+                  href={`/product/${product.slug}`}
+                  className="group overflow-hidden rounded-xl border border-border transition-colors hover:bg-muted/50"
+                >
+                  {product.thumbnail ? (
+                    <img src={product.thumbnail} alt="" className="aspect-[1.6] w-full object-cover" />
+                  ) : (
+                    <div className="flex aspect-[1.6] items-center justify-center bg-muted text-muted-foreground">
+                      <span className="text-sm">Digital resource</span>
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <h3 className="line-clamp-2 text-sm font-medium group-hover:underline">{product.title}</h3>
+                    {typeof product.price === "number" && (
+                      <p className="mt-2 text-sm font-semibold">
+                        {product.price === 0 ? "Free" : new Intl.NumberFormat("en-IN", {
+                          style: "currency",
+                          currency: product.currency || "INR",
+                          maximumFractionDigits: 0,
+                        }).format(product.price)}
+                      </p>
+                    )}
+                    {product.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{product.description}</p>}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <aside className="hidden lg:block min-w-0">
