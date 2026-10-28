@@ -1,66 +1,68 @@
 "use client";
-import { useEffect, useState } from "react";
-import Sidebar from "@/components/sidebar/sidebar";
-import { ReactNode } from "react";
-import { LineChart, Package, Plus, Settings, PanelTopIcon } from "lucide-react";
+
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Activity, BookOpen, Boxes, FileText, GraduationCap, LayoutDashboard,
+  MessageSquare, Package, PlusCircle, ShoppingCart, Star, Users,
+} from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { NavbarDropdown } from "@/components/navbar/navbar-dropdown";
 
-export default function ProfileLayout({ children }: { children: ReactNode }) {
-    const [isMounted, setIsMounted] = useState(false);
+const groups = [
+  { title: "Workspace", items: [
+    { label: "Overview", href: "/admin", icon: LayoutDashboard },
+  ]},
+  { title: "Content", items: [
+    { label: "Courses", href: "/admin/courses", icon: GraduationCap },
+    { label: "Articles", href: "/admin/blogs", icon: FileText },
+    { label: "Products", href: "/admin/products", icon: Package },
+    { label: "Create content", href: "/admin/add-course", icon: PlusCircle },
+  ]},
+  { title: "Platform", items: [
+    { label: "Users & sellers", href: "/admin/users", icon: Users },
+    { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
+    { label: "Enrollments", href: "/admin/enrollments", icon: BookOpen },
+    { label: "Reviews", href: "/admin/reviews", icon: Star },
+    { label: "Support queries", href: "/admin/queries", icon: MessageSquare },
+  ]},
+];
 
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
+export default function AdminLayout({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
 
-    const routes = [
-        {
-            label: "Admin Panel",
-            icon: PanelTopIcon,
-            route: `/admin`,
-        },
-        {
-            label: "View",
-            icon: Package,
-            route: `/admin/courses`,
-        },
-        {
-            label: "Add",
-            icon: Plus,
-            route: `/admin/add-blog`,
-        },
-        {
-            label: "Analytics",
-            icon: LineChart,
-            route: `/products/analytics`,
-        },
-        {
-            label: "Tools",
-            icon: Settings,
-            route: `/products/tools`,
-        },
-    ];
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div className="min-h-screen" />;
 
-    if (!isMounted) {
-        return null; // Prevent rendering until hydration is complete
-    }
-
-    return (
-            <div>
-                <div className="w-72 z-40 fixed hidden lg:bg-primary/5 lg:block top-0 left-0 pt-4 h-screen">
-                    <div className="flex flex-col justify-between h-full">
-                        <div className="font-bold text-sky-700 pl-6 text-2xl pb-3">Studic</div>
-                        <Sidebar routes={routes} />
-                    </div>
-                </div>
-
-
-                <div className="lg:pl-72 w-full">{children}</div>
-                <div className="fixed z-50 bottom-1 lg:left-74">
-                    <ModeToggle />
-                </div>
-                <div className="fixed bottom-1 right-1"><NavbarDropdown /></div>
-
-            </div>
-    );
+  return (
+    <div className="min-h-screen bg-background">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-card lg:flex lg:flex-col">
+        <Link href="/admin" className="flex h-16 items-center gap-3 border-b px-6">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">S</span>
+          <span><span className="block text-base font-semibold tracking-tight">Studic</span><span className="block text-xs text-muted-foreground">Admin workspace</span></span>
+        </Link>
+        <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
+          {groups.map((group) => <div key={group.title}>
+            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{group.title}</p>
+            <div className="space-y-1">{group.items.map((item) => {
+              const active = item.href === "/admin" ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + "/");
+              return <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${active ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                <item.icon size={17} strokeWidth={1.8}/><span>{item.label}</span>
+              </Link>;
+            })}</div>
+          </div>)}
+        </nav>
+        <div className="border-t p-4"><p className="text-xs text-muted-foreground">Content, commerce & community</p><div className="mt-3 flex items-center justify-between"><span className="text-sm font-medium">Appearance</span><ModeToggle /></div></div>
+      </aside>
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/90 px-5 backdrop-blur-md sm:px-8">
+          <div><p className="text-xs text-muted-foreground">Studic / Admin</p><p className="text-sm font-medium">{groups.flatMap(g => g.items).find(item => item.href === pathname || (item.href !== "/admin" && pathname.startsWith(item.href + "/")))?.label || "Workspace"}</p></div>
+          <NavbarDropdown />
+        </header>
+        {children}
+      </div>
+    </div>
+  );
 }
