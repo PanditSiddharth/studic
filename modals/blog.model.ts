@@ -1,36 +1,76 @@
-import mongoose, { Schema } from "mongoose";
-import { UserModel } from "./user.model";
-import { IProduct, ProductModel } from "./product.model";
+import mongoose, { Schema, type Model } from "mongoose";
 
-export interface IBlog {
-    slug: string;
-    title: string;
-    status: "private" | "free" | "paid";
-    description: string;
-    thumbnail: string;
-    content: string;
-    category: string[];
-    tags: string[];
-    products?: string[] | IProduct[];
-    author?: string;
-    publishedAt?: Date;
-    updatedAt?: Date;
-    _id?: string;
+export type BlogStatus = "draft" | "private" | "free" | "paid";
+export type CodeLanguage = "javascript" | "typescript" | "python" | "html" | "css" | "json" | "sql" | "bash" | "other";
+
+export interface ICodeExample {
+  id?: string;
+  title?: string;
+  language: CodeLanguage;
+  code: string;
+  starterCode?: string;
+  runnable?: boolean;
+  order?: number;
 }
 
-export const BlogSchema = new Schema<IBlog>({
-    slug: { type: String, required: true, unique: true },
-    title: { type: String, required: true },
-    status: { type: String, enum: ["private", "free", "paid"], default: "free" },
-    description: { type: String },
-    thumbnail: { type: String },
-    category: [{type: String}],
-    content: { type: String },
-    tags: [{ type: String }],
-    products: [{ type: Schema.Types.ObjectId, ref: ProductModel }],
-    author: { type: Schema.Types.ObjectId, ref: UserModel },
+export interface IBlog {
+  _id?: string;
+  slug: string;
+  title: string;
+  status: BlogStatus;
+  description: string;
+  thumbnail: string;
+  content: string;
+  category: string[];
+  tags: string[];
+  products?: string[] | mongoose.Types.ObjectId[] | unknown[];
+  author?: string | mongoose.Types.ObjectId;
+  estimatedMinutes?: number;
+  course?: string | mongoose.Types.ObjectId;
+  codeExamples?: ICodeExample[];
+  seoTitle?: string;
+  seoDescription?: string;
+  publishedAt?: Date;
+  createdOn?: Date;
+  updatedAt?: Date;
+}
+
+const CodeExampleSchema = new Schema<ICodeExample>(
+  {
+    title: { type: String, trim: true, maxlength: 160 },
+    language: { type: String, enum: ["javascript", "typescript", "python", "html", "css", "json", "sql", "bash", "other"], required: true },
+    code: { type: String, required: true, maxlength: 100000 },
+    starterCode: { type: String, maxlength: 100000 },
+    runnable: { type: Boolean, default: false },
+    order: { type: Number, default: 0, min: 0 },
+  },
+  { _id: true }
+);
+
+export const BlogSchema = new Schema<IBlog>(
+  {
+    slug: { type: String, required: true, unique: true, trim: true, lowercase: true, index: true },
+    title: { type: String, required: true, trim: true, maxlength: 160 },
+    status: { type: String, enum: ["draft", "private", "free", "paid"], default: "draft", index: true },
+    description: { type: String, default: "", maxlength: 10000 },
+    thumbnail: { type: String, default: "" },
+    category: { type: [String], default: [], index: true },
+    content: { type: String, default: "" },
+    tags: { type: [String], default: [] },
+    products: [{ type: Schema.Types.ObjectId, ref: "Product" }],
+    author: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    course: { type: Schema.Types.ObjectId, ref: "Course", index: true },
+    estimatedMinutes: { type: Number, min: 0, default: 0 },
+    codeExamples: { type: [CodeExampleSchema], default: [] },
+    seoTitle: { type: String, trim: true, maxlength: 160 },
+    seoDescription: { type: String, trim: true, maxlength: 320 },
     publishedAt: { type: Date },
-    updatedAt: { type: Date }
-  });
-  
-  export const BlogModel = mongoose.models?.Blog || mongoose.model("Blog", BlogSchema);
+  },
+  { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
+);
+
+BlogSchema.index({ status: 1, publishedAt: -1 });
+BlogSchema.index({ title: "text", description: "text", content: "text", tags: "text" });
+
+export const BlogModel: Model<IBlog> =
+  (mongoose.models.Blog as Model<IBlog>) || mongoose.model<IBlog>("Blog", BlogSchema);
