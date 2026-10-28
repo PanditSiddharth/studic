@@ -10,7 +10,7 @@ export const addOrUpdateBlog = async (blog: Partial<IBlog>): Promise<Partial<IBl
     try {
         await connectDB();
         const user = await getSessionUser();
-        if (!user) return { error: "Please Login first" };
+        if (!user || user.role !== "admin") return { error: "Administrator access required" };
 
         const options = { new: true, upsert: true, setDefaultsOnInsert: true };
         const product = await BlogModel.findOneAndUpdate(
@@ -48,7 +48,6 @@ export async function getBlog(opt: GetBlogOptions = {}): Promise<Partial<IBlog> 
             blog = await BlogModel.findOne(query).populate("products") as IBlog;
         else
             blog = await BlogModel.findOne(query) as IBlog;
-        console.log(blog);
 
         if (!blog) return { error: "No blog found" }
         if (opt?.category && Array.isArray(blog.category)) {
