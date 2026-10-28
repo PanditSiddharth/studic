@@ -28,7 +28,7 @@ const AnalyticsSchema = new Schema<IAnalytics>(
   { timestamps: false, minimize: false }
 );
 
-AnalyticsSchema.index({ userId: 1, periodStart: 1 }, { unique: true });
+AnalyticsSchema.index(\n  { userId: 1, periodStart: 1 },\n  { unique: true, partialFilterExpression: { periodStart: { $type: "date" } } }\n);
 
 export const AnalyticsModel: Model<IAnalytics> =
   (mongoose.models.Analytics as Model<IAnalytics>) || mongoose.model<IAnalytics>("Analytics", AnalyticsSchema);
