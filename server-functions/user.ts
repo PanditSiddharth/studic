@@ -128,13 +128,11 @@ export const getUserByUsername = async (username: string) => {
     const userlog = await getSessionUser()
     try {
         await connectDB()
-        const user = await UserModel.findOne({ username })
+        const user = await UserModel.findOne({ username }).lean()
         if (user) {
             if (!userlog || userlog.role != "admin" && username !== userlog?.username) {
-                user.phone = undefined
-                user.email = undefined
-                user.ifsc = undefined
-                user.account = undefined
+                const { phone, email, ifsc, account, ...publicUser } = user;
+                return JSON.parse(JSON.stringify(publicUser))
             }
 
 
@@ -150,8 +148,8 @@ export const getUserByUsername = async (username: string) => {
 export const getUsernameByProductId = async (productId: string) => {
     try {
         await connectDB()
-        const product = await ProductModel.findOne({ _id: productId }).populate("seller")
-        if (product)
+        const product = await ProductModel.findOne({ _id: productId }).populate<{ seller: { username: string } }>("seller")
+        if (product && product.seller && typeof product.seller === "object" && "username" in product.seller)
             return product.seller.username
         else
             return null
@@ -200,26 +198,28 @@ export async function getUsersFromServer(skipPageData: SkipPageDataProp): Promis
 
         if (currentUser && currentUser.role == 'admin') {
             users = await UserModel.find(query).sort({ _id: -1 })
-                .skip(skipPageData.skip).limit(skipPageData.postsPerPage).populate("analytics");
+                .skip(skipPageData.skip).limit(skipPageData.postsPerPage).populate("analytics").lean() as Array<Record<string, any>>;
         }
         else {
             users = await UserModel.find(query).sort({ _id: -1 })
-                .skip(skipPageData.skip).limit(skipPageData.postsPerPage);
+                .skip(skipPageData.skip).limit(skipPageData.postsPerPage).lean() as Array<Record<string, any>>;
         }
 
 
         users = await Promise.all(users.map(async user => {
-            user._doc.products = await ProductModel.countDocuments({ seller: user._id })
-            user._doc.analytics = user?.analytics?._doc
+            user.products = await ProductModel.countDocuments({ seller: user._id })
+            user.analytics = user?.analytics && typeof user.analytics === "object" && "_doc" in user.analytics
+                ? user.analytics._doc
+                : user.analytics
 
             if (currentUser?.role != "admin") {
-                user._doc.phone = undefined
-                user._doc.email = undefined
-                user._doc.ifsc = undefined
-                user._doc.account = undefined
-                user._doc.anlytics = undefined
+                delete user.phone
+                delete user.email
+                delete user.ifsc
+                delete user.account
+                delete user.anlytics
             }
-            return user._doc
+            return user
         }))
         if (!users || users.length === 0) { return false }
         const count = await UserModel.countDocuments(query);
@@ -250,4 +250,3 @@ export const updateUserAnalytics = async (userId: string, data: Partial<IAnalyti
         return { error: (error as { message: string }).message }
     }
 }
-

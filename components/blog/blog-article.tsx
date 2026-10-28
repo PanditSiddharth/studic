@@ -14,7 +14,7 @@ import { getBlog } from "@/server-functions/blog";
 import type { IBlog } from "@/modals/blog.model";
 import type { IProduct } from "@/modals/product.model";
 import { cn } from "@/modals/utils";
-import "@/components/themes/code.scss";
+import "@/components/themes/codetheme.css";
 
 type Params = { slug?: string[] };
 

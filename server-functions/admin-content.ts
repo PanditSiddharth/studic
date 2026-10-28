@@ -28,10 +28,13 @@ export async function searchAdminContent(kind: ContentKind, search = "", skip = 
     { description: { $regex: safeSearch, $options: "i" } },
     { tags: { $regex: safeSearch, $options: "i" } },
   ] } : {};
-  const Model = kind === "courses" ? CourseModel : kind === "blogs" ? BlogModel : ProductModel;
   const [items, total] = await Promise.all([
-    Model.find(query).sort({ updatedAt: -1, _id: -1 }).skip(Math.max(0, skip)).limit(Math.min(50, Math.max(1, limit))).lean(),
-    Model.countDocuments(query),
+    kind === "courses"
+      ? CourseModel.find(query).sort({ updatedAt: -1, _id: -1 }).skip(Math.max(0, skip)).limit(Math.min(50, Math.max(1, limit))).lean()
+      : kind === "blogs"
+        ? BlogModel.find(query).sort({ updatedAt: -1, _id: -1 }).skip(Math.max(0, skip)).limit(Math.min(50, Math.max(1, limit))).lean()
+        : ProductModel.find(query).sort({ updatedAt: -1, _id: -1 }).skip(Math.max(0, skip)).limit(Math.min(50, Math.max(1, limit))).lean(),
+    kind === "courses" ? CourseModel.countDocuments(query) : kind === "blogs" ? BlogModel.countDocuments(query) : ProductModel.countDocuments(query),
   ]);
   return JSON.parse(JSON.stringify({ items, total }));
 }
@@ -66,8 +69,10 @@ export async function updateAdminVisibility(kind: "courses" | "blogs", id: strin
     : ["draft", "private", "public", "unlisted", "free", "paid"];
   if (!allowed.includes(status)) return { error: "Invalid status." };
   await connectDB();
-  const Model = kind === "courses" ? CourseModel : BlogModel;
-  const updated = await Model.findByIdAndUpdate(id, { $set: { status, ...(status === "published" || status === "public" ? { publishedAt: new Date() } : {}) } }, { new: true }).select("_id status").lean();
+  const update = { $set: { status, ...(status === "published" || status === "public" ? { publishedAt: new Date() } : {}) } };
+  const updated = kind === "courses"
+    ? await CourseModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean()
+    : await BlogModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean();
   if (!updated) return { error: "Record not found." };
   return { success: true, item: JSON.parse(JSON.stringify(updated)) };
 }

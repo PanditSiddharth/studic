@@ -18,7 +18,7 @@ import { getPublishedProduct } from "@/server-functions/product";
 import { startCheckout } from "@/server-functions/library";
 import type { IProduct } from "@/modals/product.model";
 import { cn } from "@/modals/utils";
-import "@/components/themes/code.scss";
+import "@/components/themes/codetheme.css";
 
 type Seller = { _id?: string; name?: string; username?: string; image?: string };
 type Access = { signedIn: boolean; owned: boolean; enrolled: boolean; orderStatus: string | null; orderId: string | null; progressPercent: number };

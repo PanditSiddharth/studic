@@ -16,12 +16,23 @@ const config: Record<AdminRecordKind, { title: string; description: string; colu
   ]},
 };
 
-function valueAt(row: Record<string, any>, path: string) {
-  if (path === "item") return row.course?.title || row.product?.title || row.itemType || "—";
-  const value = path.split(".").reduce((current, key) => current?.[key], row);
+function valueAt(row: Record<string, unknown>, path: string) {
+  const nested = (value: unknown, key: string) =>
+    value !== null && typeof value === "object" && key in value
+      ? (value as Record<string, unknown>)[key]
+      : undefined;
+  if (path === "item") {
+    const course = nested(row.course, "title");
+    const product = nested(row.product, "title");
+    return String(course || product || row.itemType || "—");
+  }
+  const value = path.split(".").reduce(nested, row as unknown);
   if (value == null || value === "") return "—";
-  if (path === "amount") return new Intl.NumberFormat("en-IN", { style: "currency", currency: row.currency || "INR", maximumFractionDigits: 2 }).format(Number(value));
-  if (path === "createdOn" || path === "enrolledAt") return new Date(value).toLocaleString("en-IN", { dateStyle: "medium" });
+  if (path === "amount") return new Intl.NumberFormat("en-IN", { style: "currency", currency: String(row.currency || "INR"), maximumFractionDigits: 2 }).format(Number(value));
+  if (path === "createdOn" || path === "enrolledAt") {
+    const dateValue = value instanceof Date || typeof value === "string" || typeof value === "number" ? value : String(value);
+    return new Date(dateValue).toLocaleString("en-IN", { dateStyle: "medium" });
+  }
   if (path === "progressPercent") return `${value}%`;
   if (path === "rating") return `${value}/5`;
   return String(value).replaceAll("_", " ");

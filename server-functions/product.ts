@@ -36,14 +36,15 @@ export async function getProductsFromServer(options: GetProductOptions): Promise
             })
                 .sort({ _id: -1 })
                 .skip(options.skip)
-                .limit(options.postsPerPage);
+                .limit(options.postsPerPage)
+                .lean();
 
             const totalProducts = await ProductModel.countDocuments({
                 $or: or,
             });
         
-            if (!user || user && user._id != products[0]?.seller) {
-                products = products.map((product: IProduct) => {
+            if (!user || String(user._id) !== String(products[0]?.seller)) {
+                products = products.map((product) => {
                     product.fileLink = undefined;
                     return product
                 })
@@ -61,7 +62,7 @@ export async function getProductFromServer(productId: string): Promise<IProduct 
         const user = await getSessionUser()
 
         if (user?.role != "admin" && product.seller != user?._id)
-            product.fileLink = null
+            product.fileLink = undefined
 
         return JSON.parse(JSON.stringify(product));
     } catch (error) {
@@ -123,9 +124,11 @@ export async function getOrder(transactionId: string): Promise<Record<string, IO
         const order = await OrderModel.findOne({ transactionId }).populate("product");
         if (!order) return false
 
-        const { product, ...others } = order;
-
-        return JSON.parse(JSON.stringify({ ...product._doc, ...others._doc }));
+        const orderData = order.toObject() as unknown as Record<string, unknown> & {
+            product?: Record<string, unknown> | null;
+        };
+        const { product, ...others } = orderData;
+        return JSON.parse(JSON.stringify({ ...(product || {}), ...others }));
     } catch (error) {
         console.error(error);
         return false

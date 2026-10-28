@@ -1,7 +1,0 @@
-/* Import the light and dark themes based on the data-theme attribute */
-@import "highlight.js/styles/github.css"; /* Default light theme */
-
-/* Apply dark theme styles when data-theme is dark */
-html[data-theme="dark"] {
-  @import "highlight.js/styles/a11y-dark"; /* Dark theme */
-}
