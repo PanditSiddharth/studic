@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDownloadUrl } from "@/server-functions/library";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * Gated download endpoint. The file URL is only revealed to the buyer (or an
@@ -8,6 +9,15 @@ import { getDownloadUrl } from "@/server-functions/library";
  */
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
+  const forwardedFor = _request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const clientKey = forwardedFor || _request.headers.get("x-real-ip") || "unknown";
+  const limiter = rateLimit(`download:${clientKey}`, 30, 60 * 1000);
+  if (!limiter.allowed) {
+    return NextResponse.json({ error: "Too many download requests. Try again shortly." }, {
+      status: 429,
+      headers: { "Retry-After": String(limiter.retryAfter) },
+    });
+  }
 
   try {
     const result = await getDownloadUrl(id);

@@ -25,6 +25,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return false;
       }
       const existingUser = await checkExistingUser(user.email);
+      if (typeof existingUser === "object" && existingUser.status && existingUser.status !== "active") {
+        return false;
+      }
 
       if (!existingUser && user.name) {
         await createUser({

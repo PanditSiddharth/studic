@@ -5,6 +5,7 @@ import { IUser, UserModel } from "@/modals/user.model";
 import { userFilter } from "@/helpers";
 import { signUpSchema } from "@/modals/zod";
 import { hashPassword, verifyPassword } from "./passwords";
+import { rateLimit } from "@/lib/rate-limit";
 
 type AuthResult = { user: Partial<IUser> } | { error: string };
 
@@ -23,6 +24,8 @@ export async function registerUser(input: { name?: string; email?: string; passw
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message || "Please check your details" };
   }
+  const registrationLimit = rateLimit(`register:${parsed.data.email.toLowerCase()}`, 3, 60 * 60 * 1000);
+  if (!registrationLimit.allowed) return { error: "Too many registration attempts. Please try again later." };
 
   try {
     await connectDB();
@@ -58,9 +61,12 @@ export async function registerUser(input: { name?: string; email?: string; passw
  */
 export async function verifyCredentials(email: string, password: string): Promise<Partial<IUser> | null> {
   if (!email || !password) return null;
+  const normalizedEmail = email.trim().toLowerCase();
+  const limiter = rateLimit(`login:${normalizedEmail}`, 8, 15 * 60 * 1000);
+  if (!limiter.allowed) return null;
   try {
     await connectDB();
-    const user = await UserModel.findOne({ email: email.trim().toLowerCase() }).select("+password");
+    const user = await UserModel.findOne({ email: normalizedEmail }).select("+password");
     if (!user) return null;
     if (user.status && user.status !== "active") return null;
     if (!verifyPassword(password, user.password)) return null;

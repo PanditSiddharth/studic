@@ -199,6 +199,7 @@ export async function getBlogs(options: GetBlogsOptions): Promise<ResProps | { e
             // Fetch blogs with search and pagination
             const [blogs, totalBlogs] = await Promise.all([
                 BlogModel.find(query)
+                    .select("slug title status description thumbnail category tags author publishedAt updatedAt createdOn estimatedMinutes course seoTitle seoDescription accessType price currency")
                     .sort({ publishedAt: -1, _id: -1 })
                     .skip(Math.max(0, Number(options.skip) || 0))
                     .limit(Math.min(48, Math.max(1, Number(options.postsPerPage) || 20))),
@@ -217,7 +218,7 @@ export async function getBlogs(options: GetBlogsOptions): Promise<ResProps | { e
             if (publicOnly) query.status = { $in: ["public", "free", "paid"] }
             return {
                 blogs: JSON.parse(JSON.stringify(
-                    await BlogModel.find(query),
+                    await BlogModel.find(query).select("slug title status description thumbnail category tags author publishedAt updatedAt createdOn estimatedMinutes course seoTitle seoDescription accessType price currency"),
                 )),
                 totalBlogs: options.ids?.length
             }

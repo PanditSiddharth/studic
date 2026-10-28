@@ -43,12 +43,11 @@ export async function getProductsFromServer(options: GetProductOptions): Promise
                 $or: or,
             });
         
-            if (!user || String(user._id) !== String(products[0]?.seller)) {
-                products = products.map((product) => {
-                    product.fileLink = undefined;
-                    return product
-                })
-            }
+            products = products.map((product) => {
+                const isOwner = user && String(user._id) === String(product.seller);
+                if (!isOwner && user?.role !== "admin") product.fileLink = undefined;
+                return product;
+            });
         return JSON.parse(JSON.stringify({ products, totalProducts }));
     } catch (error: any) {
        return err(error, "f", {ret: error.message})

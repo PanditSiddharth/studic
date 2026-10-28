@@ -2,11 +2,23 @@
 import connectDB from "@/connectDB"
 import { IQuery, QueryModel } from "@/modals/query.model";
 import { getSessionUser } from "./user";
+import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
+
+const queryInputSchema = z.object({
+    name: z.string().trim().min(1).max(120),
+    email: z.string().trim().email().max(254),
+    description: z.string().trim().min(1).max(10000),
+});
 
 export const createQuery = async (data: Partial<IQuery>) => {
     try {
+        const parsed = queryInputSchema.safeParse(data);
+        if (!parsed.success) return { error: "Please provide a valid name, email and message." };
+        const limiter = rateLimit(`query:${parsed.data.email.toLowerCase()}`, 3, 60 * 60 * 1000);
+        if (!limiter.allowed) return { error: "Too many messages. Please try again later." };
         await connectDB();
-        const { name, email, description } = data;
+        const { name, email, description } = parsed.data;
         const newData = await QueryModel.create({ name, email, description });
         if (newData && newData.email)
             return { success: true }

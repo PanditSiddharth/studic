@@ -1,6 +1,6 @@
 # 🎓 Studic - Modern Educational Platform
 
-> A full-stack, production-ready learning management system built with cutting-edge web technologies. Studic empowers educators and learners with a seamless platform for courses, blogs, and digital product distribution.
+> A full-stack learning platform for structured courses, protected articles, and downloadable digital products.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js)
 ![React](https://img.shields.io/badge/React-19.3-61dafb?logo=react)
@@ -15,13 +15,14 @@
 
 ### 🎯 Core Functionality
 - **📚 Course Management** - Create, publish, and manage comprehensive courses with rich content
-- **📝 Blog Platform** - Write and share articles with Markdown editor support and syntax highlighting
-- **🛍️ Digital Products** - Upload, organize, and sell digital files with secure download links
-- **💳 Payment Integration** - Seamless transaction management with order tracking
-- **🔍 Advanced Search** - Full-text search across courses, blogs, and products
+- **📝 Blog Platform** - Write articles with Markdown, syntax highlighting, table-of-contents navigation, related content, and SEO metadata
+- **🔐 Content Visibility** - Draft/private articles stay hidden; public, free, paid, and unlisted access is enforced server-side
+- **🛍️ Digital Products** - Sell downloadable files independently or bundle them with courses
+- **💳 Commerce** - Course/product orders, enrollment access, purchase history, and protected downloads
+- **🔍 Search** - Search and discover courses, articles, and products from the application UI
 
 ### 👤 User Management
-- **🔐 Authentication** - Secure OAuth2 with Google and GitHub via NextAuth.js
+- **🔐 Authentication** - Credentials, Google, and GitHub sign-in via NextAuth.js
 - **👨‍💼 Admin Dashboard** - Comprehensive analytics and content management interface
 - **💰 User Profiles** - Transaction history, purchase management, and account settings
 - **📧 Email Notifications** - Automated emails for orders, reviews, and queries
@@ -29,8 +30,9 @@
 ### 🎨 User Experience
 - **🌓 Dark/Light Mode** - Theme persistence with next-themes
 - **📱 Responsive Design** - Mobile-first approach with Tailwind CSS
-- **♿ Accessibility** - Built with Radix UI components for inclusive design
-- **⚡ Performance** - Optimized with Next.js Turbopack for blazing-fast builds
+- **♿ Accessibility** - Radix UI primitives, responsive layouts, and reduced-motion support
+- **✨ Motion Design** - Framer Motion animations with reduced-motion handling
+- **⚡ Performance** - Next.js App Router, Server Components, image optimization, and code splitting
 
 ### 🔧 Developer Experience
 - **📦 Type Safety** - Full TypeScript implementation with Zod validation
@@ -46,7 +48,7 @@
 - **Framework**: [Next.js 16.4](https://nextjs.org) with Turbopack
 - **UI Library**: [React 19.3](https://react.dev)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com) + Custom SCSS
-- **Components**: [Radix UI](https://radix-ui.com) + [shadcn/ui](https://shadcn.dev)
+- **Components**: [Radix UI](https://radix-ui.com) primitives and reusable local UI components
 - **Forms**: [React Hook Form](https://react-hook-form.com) + [Zod](https://zod.dev)
 - **State Management**: [Zustand](https://zustand-demo.pmnd.rs)
 - **Icons**: [Lucide React](https://lucide.dev) + [React Icons](https://react-icons.github.io/react-icons)
@@ -62,7 +64,7 @@
 - **Linting**: ESLint + Next.js config
 - **Validation**: Zod schemas
 - **HTTP Client**: Axios
-- **Encryption**: CryptoJS
+- **Security**: NextAuth.js, Zod, server-side authorization, security headers, and request throttling
 - **Code Highlighting**: Highlight.js + Rehype Plugins
 - **Animations**: Framer Motion
 - **Carousels**: Embla Carousel
@@ -85,9 +87,9 @@ studic/
 │   │   ├── (add)/               # Add new content
 │   │   ├── (show)/              # Manage existing content
 │   │   └── make-admin/          # Admin promotion panel
-│   ├── api/                     # API routes
-│   │   ├── auth/                # Authentication endpoints
-│   │   └── test/
+│   ├── api/                     # API routes (auth and gated downloads)
+│   ├── sitemap.ts               # Database-backed public sitemap
+│   ├── robots.ts                # Crawler rules and sitemap location
 │   └── layout.tsx               # Root layout with providers
 │
 ├── components/                   # React components
@@ -124,7 +126,8 @@ studic/
 │
 ├── auth_config.ts               # NextAuth configuration
 ├── connectDB.ts                 # MongoDB connection
-├── proxy.ts                     # Next.js 16 request proxy
+├── proxy.ts                     # Next.js 16 request proxy and protected-route throttling
+├── lib/                         # Shared SEO and security utilities
 ├── store.ts                     # Zustand store setup
 ├── types.ts                     # TypeScript type definitions
 └── tailwind.config.ts           # Tailwind configuration
@@ -135,9 +138,10 @@ studic/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js** 20.9+ (required by Next.js 16) or a compatible Bun release
+- **Node.js 24.x** (the project engine range is `>=24.0.0 <25.0.0`)
 - **MongoDB** instance (local or Atlas)
 - **Git** for version control
+- **Cloudinary** account for media and file uploads
 
 ### Installation
 
@@ -154,42 +158,59 @@ npm install
 bun install
 ```
 
-> After the Next.js 16 migration, run `npm install` once to refresh `package-lock.json` before using `npm ci` in CI/deployments.
+> The repository includes both `package-lock.json` and `bun.lock`. Use one package manager consistently.
 
 3. **Configure environment variables**
 
-Create a `.env.local` file in the root directory:
+Create a `.env.local` file in the project root. The following names match the application code:
 
 ```env
-# Database
-MONGODB_URI=your_mongodb_connection_string
+# MongoDB
+URI=mongodb_connection_string
 
-# NextAuth
-NEXTAUTH_SECRET=your_nextauth_secret_key
+# Auth.js / NextAuth
+AUTH_SECRET=long_random_secret
+NEXTAUTH_SECRET=long_random_secret
+AUTH_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
 
-# OAuth Providers
-GOOGLE_ID=your_google_oauth_id
-GOOGLE_SECRET=your_google_oauth_secret
-GITHUB_ID=your_github_oauth_id
-GITHUB_SECRET=your_github_oauth_secret
+# OAuth providers
+AUTH_GOOGLE_ID=google_client_id
+AUTH_GOOGLE_SECRET=google_client_secret
+AUTH_GITHUB_ID=github_client_id
+AUTH_GITHUB_SECRET=github_client_secret
 
 # Cloudinary
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+PRESET_NAME=your_upload_preset
 
-# Email Service
-SMTP_HOST=your_smtp_host
-SMTP_PORT=587
-SMTP_USER=your_email
-SMTP_PASS=your_password
+# Site and SEO
+DOMAIN=https://www.example.com
+NEXT_PUBLIC_DOMAIN=https://www.example.com
+
+# Admin/payment configuration used by the deployment
+SKEY=your_payment_key
+MID=your_payment_merchant_id
+SUPER_ADMIN_EMAILS=admin@example.com
+
+# Brevo SMTP credentials used by the admin mailer
+USER_MAIL=your_smtp_login
+MAIL_PASSWORD=your_smtp_password
 ```
+
+Do not commit `.env`, `.env.local`, or any secret values. For local development, `DOMAIN` and
+`NEXT_PUBLIC_DOMAIN` can both be `http://localhost:3000`. `NEXT_PUBLIC_*` values are exposed to
+the browser, so never put private credentials in them.
 
 4. **Run the development server**
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser. The development server uses
+Turbopack; use `npm run dev:webpack` if you need to compare Webpack behavior.
 
 ---
 
@@ -216,16 +237,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - Course categorization and tagging
 
 ### 📝 Blog System
-- Markdown editor with preview
-- Syntax highlighting for code blocks
-- Comment and review system
-- SEO-friendly slug generation
+- Markdown editor with preview and syntax highlighting
+- Public, free, paid, private, draft, and unlisted visibility states
+- Paid article access through eligible purchases/course enrollment
+- Direct article layout with “On this page” navigation and related courses/articles
+- SEO-friendly metadata, canonical URLs, Open Graph/Twitter cards, JSON-LD, sitemap, and robots rules
 
 ### 🛍️ Product Management
 - Digital file hosting and management
-- Secure download links
-- Product analytics
-- Inventory management
+- Server-side ownership/enrollment checks before download URLs are revealed
+- Independent product purchases and course-bundled product access
 
 ### 💳 E-Commerce Features
 - Secure payment processing
@@ -244,12 +265,28 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 🔒 Security Features
 
 - ✅ NextAuth.js for secure authentication
+- ✅ Suspended/deleted accounts rejected during credentials and OAuth sign-in
 - ✅ MongoDB schema validation with Mongoose
-- ✅ Zod runtime validation for API inputs
-- ✅ CSRF protection built-in
+- ✅ Zod runtime validation and length limits for public contact submissions
+- ✅ Server-side authorization for articles, courses, products, and downloads
+- ✅ Rate limiting for login, registration, contact submissions, downloads, and sensitive routes
+- ✅ Security headers including CSP, frame protection, MIME sniffing protection, and referrer policy
 - ✅ Secure session management
 - ✅ OAuth2 integration (Google, GitHub)
 - ✅ Environment variable protection
+
+Application throttling is an abuse-control layer, not a substitute for network-level DDoS
+protection. Production deployments should additionally use a CDN/WAF such as Cloudflare or a
+hosting-provider WAF with distributed rate limiting.
+
+## 🔎 SEO and indexing
+
+- `/sitemap.xml` is generated dynamically from published courses, public/free/paid articles,
+  published products, and static public pages.
+- `/robots.txt` allows public content and disallows admin, API, authentication, profile, chat,
+  payment, and terminal routes.
+- Private, draft, and unlisted articles are excluded from the sitemap.
+- Article, course, and product pages provide route-specific metadata and structured data.
 
 ---
 
@@ -314,4 +351,3 @@ If you encounter any issues or have questions, please open an issue on GitHub or
 ⭐ If you find this project useful, please consider giving it a star!
 
 </div>
-
