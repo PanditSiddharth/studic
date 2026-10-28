@@ -3,56 +3,65 @@ import { ICourse } from "./modals/course.model";
 import { IProduct } from "./modals/product.model";
 import { IUser } from "./modals/user.model";
 
+const plainId = (value: any) => value == null ? undefined : String(value);
+
 export const userFilter = (user: any = {}): Partial<IUser> => {
-    const { _id, name, email, password, image, role, about, phone, username }: Partial<IUser> = user;
-    const filteredUser: Partial<IUser> = { _id: _id ? String(_id) : undefined, name, email, password, image, role, about, phone, username };
-    return JSON.parse(JSON.stringify(filteredUser))
-}
+    const { _id, name, email, password, image, role, status, about, phone, username, createdOn, updatedAt }: Partial<IUser> = user;
+    return JSON.parse(JSON.stringify({ _id: plainId(_id), name, email, password, image, role, status, about, phone, username, createdOn, updatedAt }));
+};
 
 export const blogFilter = (blog: any = {}): Partial<IBlog> => {
-    const { _id, slug, title, status, description, thumbnail, content, tags, category, products, author, publishedAt, updatedAt }: Partial<IBlog> = blog;
-    const filteredBlog: Partial<IBlog> = { _id: _id ? String(_id) : undefined, slug, title, status, description, thumbnail, content, tags, category, products, author, publishedAt, updatedAt };
-
-    return JSON.parse(JSON.stringify(filteredBlog));
-}
+    const {
+        _id, slug, title, status, description, thumbnail, content, tags, category,
+        products, author, publishedAt, updatedAt, createdOn, estimatedMinutes,
+        course, seoTitle, seoDescription
+    }: Partial<IBlog> = blog;
+    return JSON.parse(JSON.stringify({
+        _id: plainId(_id), slug, title, status, description, thumbnail, content,
+        tags, category, products, author: plainId(author), publishedAt, updatedAt,
+        createdOn, estimatedMinutes, course: plainId(course), seoTitle, seoDescription
+    }));
+};
 
 export const courseFilter = (course: any = {}): Partial<ICourse> => {
-    const { _id, slug, tags, title, status, price, description, thumbnail, content, author, publishedAt }: Partial<ICourse> = course;
-    const filteredCourse: Partial<ICourse> = { _id: _id ? String(_id) : undefined, slug, title, status, tags, price, description, thumbnail, content, author, publishedAt };
-    return JSON.parse(JSON.stringify(filteredCourse));
-}
+    const {
+        _id, slug, tags, title, status, price, description, thumbnail, content,
+        author, publishedAt, createdOn, updatedAt, accessType, currency, level,
+        language, estimatedMinutes, prerequisites, landingPage
+    }: Partial<ICourse> = course;
+    return JSON.parse(JSON.stringify({
+        _id: plainId(_id), slug, title, status, tags, price, description, thumbnail,
+        content, author: plainId(author), publishedAt, createdOn, updatedAt,
+        accessType, currency, level, language, estimatedMinutes, prerequisites, landingPage
+    }));
+};
 
 export const productFilter = (product: any = {}, str?: any): Partial<IProduct> => {
-    str = str?.trim()
+    const copy = { ...product };
+    str = str?.trim();
     if (str && str.includes("!")) {
-        str = str?.replace("!", "")
-        for (const data of str.split(" ")) {
-            product[data] = undefined;
-        }
+        str = str.replace("!", "");
+        for (const field of str.split(" ")) copy[field] = undefined;
     } else if (str) {
-        const pd: any = {}
-        for (const data in str?.split()) {
-            pd[data] = product[data]
-        }
-        product = pd
+        const fields = str.split(" ").filter(Boolean);
+        const selected: Record<string, unknown> = {};
+        for (const field of fields) selected[field] = copy[field];
+        Object.assign(copy, selected);
     }
+    const {
+        _id, slug, title, price, description, thumbnail, tags, fileLink,
+        publishedAt, status, currency, seller, fileName, fileSize, mimeType,
+        downloadLimit, createdOn, updatedAt
+    }: Partial<IProduct> = copy;
+    return JSON.parse(JSON.stringify({
+        _id: plainId(_id), slug, title, price, description, thumbnail, tags,
+        fileLink, publishedAt, status, currency, seller: plainId(seller), fileName,
+        fileSize, mimeType, downloadLimit, createdOn, updatedAt
+    }));
+};
 
-    const { _id, slug, title, price, description, thumbnail, tags, fileLink, publishedAt }: Partial<IProduct> = product;
-    const filteredProduct: Partial<IProduct> = {
-        _id: _id ? String(_id) : undefined, slug, title,
-        price, description, thumbnail, tags, fileLink, publishedAt
-    };
-    return JSON.parse(JSON.stringify(filteredProduct))
-}
-
-export const err = <T>(error: any, tp?: "m" | "f", e?: {
-    ret: T
-}) => {
-    if (!tp || tp === "f")
-        console.error(error)
-    else if (tp === "m") {
-        console.error(error?.message)
-    }
-    return e?.ret as T
-}
-
+export const err = <T>(error: any, tp?: "m" | "f", e?: { ret: T }) => {
+    if (!tp || tp === "f") console.error(error);
+    else if (tp === "m") console.error(error?.message);
+    return e?.ret as T;
+};

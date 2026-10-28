@@ -128,7 +128,9 @@ const AddCourse = (props: any) => {
                   </SelectTrigger>
                   <SelectContent >
                     <SelectItem value="private">Private</SelectItem>
-                    <SelectItem value="published">Publish</SelectItem>
+                    <SelectItem value="published">Public</SelectItem>
+                    <SelectItem value="unlisted">Unlisted (link only)</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
                   </SelectContent>
                 </Select>
 

@@ -52,7 +52,7 @@ export const ZodProductScema = z.object({
 export const ZodBlogSchema = z.object({
   slug: slugSchema,
   title: z.string().trim().min(1).max(160),
-  status: z.enum(["draft", "private", "free", "paid"]).default("draft"),
+  status: z.enum(["draft", "private", "public", "unlisted", "free", "paid"]).default("draft"),
   description: z.string().max(10000).default(""),
   thumbnail: urlOrEmpty,
   content: z.string().default(""),
@@ -72,7 +72,7 @@ export const ZodBlogSchema = z.object({
 export const ZodCourseSchema = z.object({
   slug: slugSchema,
   title: z.string().trim().min(1).max(160),
-  status: z.enum(["draft", "private", "published", "archived"]).default("draft"),
+  status: z.enum(["draft", "private", "published", "unlisted", "archived"]).default("draft"),
   accessType: z.enum(["free", "paid"]).default("free"),
   price: z.number().min(0).default(0),
   currency: z.string().length(3).default("INR"),

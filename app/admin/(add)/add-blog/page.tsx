@@ -140,9 +140,12 @@ const AddBlog = (props: any) => {
                     <SelectValue placeholder="Publish.." />
                   </SelectTrigger>
                   <SelectContent defaultValue={field.value}>
+                    <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="private">Private</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="unlisted">Unlisted (link only)</SelectItem>
+                    <SelectItem value="free">Free (legacy access mode)</SelectItem>
+                    <SelectItem value="paid">Paid (legacy access mode)</SelectItem>
                   </SelectContent>
                 </Select>
 
