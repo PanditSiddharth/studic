@@ -35,8 +35,8 @@ export interface IUser {
 
 const SellerProfileSchema = new Schema(
   {
-    account: { type: String, trim: true, select: false },
-    ifsc: { type: String, trim: true, uppercase: true, select: false },
+    account: { type: String, trim: true },
+    ifsc: { type: String, trim: true, uppercase: true },
     payoutEnabled: { type: Boolean, default: false },
   },
   { _id: false }
