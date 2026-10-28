@@ -2,8 +2,8 @@
 
 > A full-stack, production-ready learning management system built with cutting-edge web technologies. Studic empowers educators and learners with a seamless platform for courses, blogs, and digital product distribution.
 
-![Next.js](https://img.shields.io/badge/Next.js-15.1-black?logo=next.js)
-![React](https://img.shields.io/badge/React-19.0-61dafb?logo=react)
+![Next.js](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js)
+![React](https://img.shields.io/badge/React-19.3-61dafb?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38b2ac?logo=tailwindcss)
 ![MongoDB](https://img.shields.io/badge/MongoDB-8.9-00ed64?logo=mongodb)
@@ -43,8 +43,8 @@
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework**: [Next.js 15.1](https://nextjs.org) with Turbopack
-- **UI Library**: [React 19](https://react.dev)
+- **Framework**: [Next.js 16.4](https://nextjs.org) with Turbopack
+- **UI Library**: [React 19.3](https://react.dev)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com) + Custom SCSS
 - **Components**: [Radix UI](https://radix-ui.com) + [shadcn/ui](https://shadcn.dev)
 - **Forms**: [React Hook Form](https://react-hook-form.com) + [Zod](https://zod.dev)
@@ -124,7 +124,7 @@ studic/
 │
 ├── auth_config.ts               # NextAuth configuration
 ├── connectDB.ts                 # MongoDB connection
-├── middleware.ts                # Next.js middleware
+├── proxy.ts                     # Next.js 16 request proxy
 ├── store.ts                     # Zustand store setup
 ├── types.ts                     # TypeScript type definitions
 └── tailwind.config.ts           # Tailwind configuration
@@ -135,7 +135,7 @@ studic/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js** 18+ or **Bun**
+- **Node.js** 20.9+ (required by Next.js 16) or a compatible Bun release
 - **MongoDB** instance (local or Atlas)
 - **Git** for version control
 
@@ -153,6 +153,8 @@ npm install
 # or
 bun install
 ```
+
+> After the Next.js 16 migration, run `npm install` once to refresh `package-lock.json` before using `npm ci` in CI/deployments.
 
 3. **Configure environment variables**
 
@@ -195,8 +197,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server with Turbopack (recommended) |
-| `npm run wdev` | Start dev server with standard bundler |
+| `npm run dev` | Start Next.js 16 dev server with Turbopack (default) |
+| `npm run dev:webpack` | Start dev server using Webpack for compatibility testing |
+| `npm run wdev` | Alias for `npm run dev` |
 | `npm run build` | Build for production |
 | `npm start` | Start production server |
 | `npm run type` | Run TypeScript type checking |
