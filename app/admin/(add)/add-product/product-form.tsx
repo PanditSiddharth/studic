@@ -17,6 +17,7 @@ import { MyField } from '../myField';
 import { generateSlug, getProductDefault } from '../helpers';
 import { useAddProducts } from '@/store';
 import { productFilter } from '@/helpers';
+import { addOrUpdateProducts } from '@/server-functions/product';
 // import { useProductIds } from '@/store';
 interface IProductForm {
   initialValue?: IProduct
@@ -50,7 +51,14 @@ const AddProductForm = ({ initialValue }: IProductForm) => {
       return form.setError("slug", { message: "Only letters, - and numbers are allowed" });
     }
 
-    setProductAdds([...productAdds, productFilter(data)])
+    const payload = productFilter({ ...data, _id: initialValue?._id, seller: initialValue?.seller });
+    const result = await addOrUpdateProducts(payload);
+    if ("error" in result) {
+      toast({ title: "Could not save product", description: result.error, variant: "destructive" });
+      return;
+    }
+    setProductAdds([]);
+    toast({ title: initialValue?._id ? "Product updated" : "Product created", description: "Changes saved to the database." });
   }
 
   const addTag = () => {
@@ -71,7 +79,7 @@ const AddProductForm = ({ initialValue }: IProductForm) => {
       <form onSubmit={form.handleSubmit(onSubmit)} className='w-full p-4 max-w-4xl mx-auto'>
         <Card>
           <CardHeader>
-            <CardTitle>Add Product</CardTitle>
+            <CardTitle>{initialValue?._id ? "Edit Product" : "Create Product"}</CardTitle>
           </CardHeader>
           <CardContent className='flex-1 grid md:grid-cols-2 grid-cols-1 w-full  justify-center gap-2'>
             <MyField
@@ -154,7 +162,7 @@ const AddProductForm = ({ initialValue }: IProductForm) => {
           <CardFooter className='flex justify-center items-center'>
 
             <Button type="submit" disabled={form.formState.isSubmitting} className='w-full md:max-w-xs'>
-              {form.formState.isSubmitting ? "Adding..." : "Add Product"}</Button>
+              {form.formState.isSubmitting ? "Saving..." : initialValue?._id ? "Save Changes" : "Create Product"}</Button>
           </CardFooter>
         </Card>
       </form>
