@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Model } from "mongoose";
 
-export type CourseStatus = "draft" | "private" | "published" | "archived";
+export type CourseStatus = "draft" | "private" | "published" | "unlisted" | "archived";
 export type AccessType = "free" | "paid";
 
 export interface ICourse {
@@ -30,7 +30,7 @@ const CourseSchema = new Schema<ICourse>(
   {
     slug: { type: String, required: true, unique: true, trim: true, lowercase: true, index: true },
     title: { type: String, required: true, trim: true, maxlength: 160 },
-    status: { type: String, enum: ["draft", "private", "published", "archived"], default: "draft", index: true },
+    status: { type: String, enum: ["draft", "private", "published", "unlisted", "archived"], default: "draft", index: true },
     accessType: { type: String, enum: ["free", "paid"], default: "free", index: true },
     price: { type: Number, required: true, min: 0, default: 0 },
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
