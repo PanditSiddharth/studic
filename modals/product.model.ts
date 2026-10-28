@@ -32,7 +32,7 @@ export const ProductSchema = new Schema<IProduct>(
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
     tags: { type: [String], default: [], index: true },
     thumbnail: { type: String, default: "" },
-    fileLink: { type: String, select: false },
+    fileLink: { type: String },
     seller: { type: Schema.Types.ObjectId, ref: "User", index: true },
     status: { type: String, enum: ["draft", "published", "archived"], default: "draft", index: true },
     fileName: { type: String, trim: true },
