@@ -32,7 +32,6 @@ const ProductCard = ({ product, options, className }: ProductOptions) => {
                     alt={product.title! || "no title"}
                     fill
                     className="object-cover"
-                    className=""
                 />
             </Link>
         </CardHeader>
