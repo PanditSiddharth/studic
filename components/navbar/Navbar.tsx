@@ -40,9 +40,6 @@ export default function Navbar() {
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-6">
           <Link href="/" className="group flex shrink-0 items-center gap-2.5" aria-label="Studic home">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-purple-500 text-sm font-bold text-primary-foreground shadow-sm shadow-primary/20 transition-transform group-hover:-rotate-3">
-              S
-            </span>
             <span className="font-tdb text-xl leading-none text-transparent bg-gradient-to-r from-primary to-purple-400 bg-clip-text">
               Studic
             </span>
