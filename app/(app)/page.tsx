@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { IBlog } from "@/modals/blog.model"
 import type { ICourse } from "@/modals/course.model"
+import type { IProduct } from "@/modals/product.model"
 import { getBlogs } from "@/server-functions/blog"
 import { getCourses } from "@/server-functions/course"
+import { getPublishedProducts } from "@/server-functions/product"
+import ProductCard from "@/components/product/product-card"
 import { useDataStore } from "@/store"
 import { BookOpen, Mail, Search } from "lucide-react"
 import { cn } from "@/modals/utils"
@@ -17,24 +20,27 @@ import { RxMagnifyingGlass } from "react-icons/rx"
 export default function HomePage() {
   const coursesStore = useDataStore<ICourse[]>("courses", [])()
   const blogsStore = useDataStore<IBlog[]>("blogs", [])()
+  const productsStore = useDataStore<IProduct[]>("home-products", [])()
 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [courses, blogs] = await Promise.all([
+        const [courses, blogs, products] = await Promise.all([
           getCourses({ skip: 0, postsPerPage: 4 }),
-          getBlogs({ skip: 0, postsPerPage: 4 }),
+          getBlogs({ skip: 0, postsPerPage: 4, publicOnly: true }),
+          getPublishedProducts({ skip: 0, postsPerPage: 4 }),
         ])
 
         if ("courses" in courses) coursesStore.setData(courses.courses)
         if ("blogs" in blogs) blogsStore.setData(blogs.blogs)
+        if ("products" in products) productsStore.setData(products.products as IProduct[])
       } catch (error) {
         console.error("Data fetching error:", error)
       }
     }
 
     fetchInitialData()
-  }, [coursesStore.setData, blogsStore.setData])
+  }, [coursesStore.setData, blogsStore.setData, productsStore.setData])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -71,10 +77,15 @@ export default function HomePage() {
                 </form>
               </div>
 
-              <div className="pt-6">
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-6">
                 <Link href="/courses">
                   <Button variant="default" className="border-2 border-primary/20 h-11 px-8">
                     Browse All Courses
+                  </Button>
+                </Link>
+                <Link href="/products">
+                  <Button variant="outline" className="h-11 px-8">
+                    Shop Resources
                   </Button>
                 </Link>
               </div>
@@ -99,6 +110,17 @@ export default function HomePage() {
           </div>
         </Section>
 
+        {/* Featured Products */}
+        {productsStore.data.length > 0 && (
+          <Section title="Digital Resources" actionHref="/products" actionText="Browse All Products">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {productsStore.data.map((product) => (
+                <ProductCard key={product.slug} product={product} />
+              ))}
+            </div>
+          </Section>
+        )}
+
         {/* Featured Blogs */}
         <Section title="Latest Articles" actionHref="/blogs" actionText="Read All Articles">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -107,7 +129,7 @@ export default function HomePage() {
                 key={blog.slug}
                 title={blog.title}
                 description={blog.description}
-                slug={`/t/${blog.category[0]}/${blog.slug}`}
+                slug={blog.category?.length ? `/t/${blog.category[0]}/${blog.slug}` : `/t/${blog.slug}`}
                 image={blog.thumbnail}
                 date={blog.publishedAt + ""}
                 className="hover:border-primary/20 transition-all duration-300 hover:-translate-y-1.5"

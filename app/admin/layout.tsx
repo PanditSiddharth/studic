@@ -26,6 +26,7 @@ const groups = [
     { label: "Enrollments", href: "/admin/enrollments", icon: BookOpen },
     { label: "Reviews", href: "/admin/reviews", icon: Star },
     { label: "Support queries", href: "/admin/queries", icon: MessageSquare },
+    { label: "Chats", href: "/chat", icon: MessageSquare },
   ]},
 ];
 

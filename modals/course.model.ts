@@ -50,7 +50,10 @@ const CourseSchema = new Schema<ICourse>(
 );
 
 CourseSchema.index({ status: 1, publishedAt: -1 });
-CourseSchema.index({ title: "text", description: "text", tags: "text" });
+// NOTE: do not add a text index to this collection. MongoDB reads the `language`
+// field of a document as the text-search language override, and courses store a
+// human language such as "hi" here. Saving such a document would fail with
+// "language override unsupported: hi". Search uses regex queries instead.
 
 export const CourseModel: Model<ICourse> =
   (mongoose.models.Course as Model<ICourse>) || mongoose.model<ICourse>("Course", CourseSchema);

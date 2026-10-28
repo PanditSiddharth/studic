@@ -4,6 +4,7 @@ import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Navbar from "@/components/navbar/Navbar";
+import { ToastProvider } from "@/components/ToastProvider";
 import localFont from "next/font/local";
 const tdb = localFont({
   src: "../public/fonts/tdb.ttf",
@@ -54,6 +55,7 @@ export default function RootLayout({
             <div className="w-72 h-72 rounded-full bg-purple-600/20 blur-[128px] absolute  left-20 top-[50%] z-[-1]" />
             <div className="w-72 h-72 rounded-full bg-purple-600/30 blur-[128px] absolute  right-0 top-[70%] z-[-1]" />
             {children}
+            <ToastProvider />
 
           </ThemeProvider>
         </SessionProvider>

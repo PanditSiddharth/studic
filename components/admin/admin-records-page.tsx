@@ -1,8 +1,9 @@
 import { getAdminRecords, type AdminRecordKind } from "@/server-functions/admin-records";
+import OrderActions from "@/components/admin/order-actions";
 
 const config: Record<AdminRecordKind, { title: string; description: string; columns: { key: string; label: string }[] }> = {
   orders: { title: "Orders", description: "Payment and purchase records from the order model.", columns: [
-    { key: "orderId", label: "Order ID" }, { key: "buyer.name", label: "Buyer" }, { key: "item", label: "Item" }, { key: "amount", label: "Amount" }, { key: "status", label: "Status" }, { key: "createdOn", label: "Created" },
+    { key: "orderId", label: "Order ID" }, { key: "buyer.name", label: "Buyer" }, { key: "item", label: "Item" }, { key: "amount", label: "Amount" }, { key: "status", label: "Status" }, { key: "createdOn", label: "Created" }, { key: "actions", label: "Actions" },
   ]},
   enrollments: { title: "Enrollments", description: "Course access, progress and completion records.", columns: [
     { key: "user.name", label: "Student" }, { key: "course.title", label: "Course" }, { key: "status", label: "Status" }, { key: "progressPercent", label: "Progress" }, { key: "enrolledAt", label: "Enrolled" },
@@ -38,7 +39,7 @@ export default async function AdminRecordsPage({ kind }: { kind: AdminRecordKind
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-muted/40 text-xs text-muted-foreground"><tr>{page.columns.map((column) => <th key={column.key} className="whitespace-nowrap px-4 py-3 font-medium">{column.label}</th>)}</tr></thead>
-          <tbody className="divide-y">{result.records.map((record: any, index: number) => <tr key={record._id || index} className="align-top hover:bg-muted/20">{page.columns.map((column) => <td key={column.key} className="max-w-[280px] px-4 py-3"><span className={column.key === "status" ? "inline-flex rounded-full border px-2 py-1 text-xs capitalize" : "block whitespace-normal"}>{valueAt(record, column.key)}</span></td>)}</tr>)}</tbody>
+          <tbody className="divide-y">{result.records.map((record: any, index: number) => <tr key={record._id || index} className="align-top hover:bg-muted/20">{page.columns.map((column) => <td key={column.key} className="max-w-[280px] px-4 py-3">{column.key === "actions" ? <OrderActions orderId={record.orderId} status={record.status} /> : <span className={column.key === "status" ? "inline-flex rounded-full border px-2 py-1 text-xs capitalize" : "block whitespace-normal"}>{valueAt(record, column.key)}</span>}</td>)}</tr>)}</tbody>
         </table>
       </div>
       {result.records.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">Nothing here yet. Records will appear when users interact with Studic.</p>}

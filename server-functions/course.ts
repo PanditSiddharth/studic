@@ -4,7 +4,8 @@ import { CourseModel, ICourse } from "@/modals/course.model";
 import { BlogModel } from "@/modals/blog.model";
 import { getSessionUser } from "./user";
 import mongoose from "mongoose";
-import { courseFilter, err } from "@/helpers";
+import { courseFilter, blogFilter } from "@/helpers";
+import { getItemAccess } from "./library";
 
 export const addOrUpdateCourse = async (course: Partial<ICourse>): Promise<Partial<ICourse> | { error: string }> => {
     try {
@@ -21,7 +22,8 @@ export const addOrUpdateCourse = async (course: Partial<ICourse>): Promise<Parti
         if (!courseRes) return { error: "Something went wrong in processing the course" };
         return courseFilter(courseRes)
     } catch (error: any) {
-        return err(error, "f", { ret: error.message });
+        console.error(error);
+        return { error: error?.message || "Could not save this course" };
     }
 };
 
@@ -52,7 +54,78 @@ export async function getCourse(options: GetCourseOptions): Promise<Partial<ICou
         if (!course) return {error: "No course found"}
         return courseFilter(course);
     } catch (error: any) {
-        return err(error, "f", {ret: error.message});
+        console.error(error);
+        return { error: error?.message || "Could not load this course" };
+    }
+}
+
+interface GetCourseLessonOptions {
+    courseSlug?: string;
+    lessonSlug?: string;
+}
+
+/**
+ * Loads one lesson for a course, enforcing access on the server. Paid course
+ * lessons are only returned once the learner owns the course; otherwise the
+ * response carries a locked summary without the article body.
+ */
+export async function getCourseLesson(options: GetCourseLessonOptions) {
+    if (!options?.courseSlug || !options?.lessonSlug)
+        return { error: "Invalid lesson link" };
+
+    await connectDB();
+
+    try {
+        const course = await CourseModel.findOne({ slug: options.courseSlug })
+            .populate("content", "title description thumbnail slug") as ICourse;
+
+        if (!course) return { error: "This course could not be found" };
+        if (course.status !== "published") return { error: "This course is not available" };
+
+        const lessonIds = new Set(
+            (Array.isArray(course.content) ? course.content : [])
+                .map((item: any) => String(item?._id ?? item ?? ""))
+                .filter(Boolean)
+        );
+
+        const lesson = await BlogModel.findOne({ slug: options.lessonSlug }).populate({
+            path: "products",
+            match: { $or: [{ status: "published" }, { status: { $exists: false } }] },
+            select: "title slug thumbnail description price currency tags status",
+        });
+
+        if (!lesson || !lessonIds.has(String(lesson._id)))
+            return { error: "This lesson is not part of the course" };
+
+        const access = await getItemAccess({ courseId: String(course._id) });
+        const isPaid = course.accessType !== "free" && Number(course.price) > 0;
+        const summary = {
+            _id: String(lesson._id),
+            title: lesson.title,
+            slug: lesson.slug,
+            thumbnail: lesson.thumbnail,
+            description: lesson.description,
+        };
+
+        if (isPaid && !access.owned) {
+            return JSON.parse(JSON.stringify({
+                locked: true,
+                course: courseFilter(course),
+                access,
+                lesson: summary,
+            }));
+        }
+
+        return JSON.parse(JSON.stringify({
+            locked: false,
+            course: courseFilter(course),
+            access,
+            lesson: summary,
+            blog: blogFilter(lesson),
+        }));
+    } catch (error: any) {
+        console.error("Error loading course lesson", error);
+        return { error: error?.message || "Could not load this lesson" };
     }
 }
 
@@ -61,6 +134,10 @@ interface GetCoursesOptions {
     postsPerPage?: number
     search?: string
     searchBy?: string
+    level?: string
+    accessType?: "free" | "paid"
+    /** Admin screens can request drafts; public pages only ever see published courses. */
+    includeUnpublished?: boolean
 }
 
 interface ResProps {
@@ -68,31 +145,42 @@ interface ResProps {
     totalCourses: number;
 }
 
+const escapeSearchRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export async function getCourses(options: GetCoursesOptions): Promise<ResProps | {error: string}> {
     await connectDB()
-    const user = await getSessionUser()
-
     try {
-        options.postsPerPage = options.postsPerPage || 20
-        const or = [
-            { title: { $regex: options.search || "", $options: "i" } },
-            { description: { $regex: options.search || "", $options: "i" } },
-            { tags: { $regex: options.search || "", $options: "i" } },
-        ]
-            // Fetch courses with search and pagination
-           const courses = await CourseModel.find({
-                $or: or,
-            })
-                .sort({ _id: -1 })
-                .skip(options.skip)
-                .limit(options.postsPerPage);
+        const skip = Math.max(0, Number(options?.skip) || 0)
+        const limit = Math.min(48, Math.max(1, Number(options?.postsPerPage) || 20))
+        const search = String(options?.search || "").trim()
 
-            const totalCourses = await CourseModel.countDocuments({
-                $or: or,
-            });
-        
+        const query: Record<string, any> = {}
+        if (!options?.includeUnpublished) query.status = "published"
+
+        if (search) {
+            const regex = { $regex: escapeSearchRegex(search), $options: "i" }
+            query.$or = [{ title: regex }, { description: regex }, { tags: regex }]
+        }
+
+        if (options?.level && options.level !== "all") query.level = options.level
+
+        if (options?.accessType === "free") {
+            query.$and = [{ $or: [{ accessType: "free" }, { price: 0 }] }]
+        } else if (options?.accessType === "paid") {
+            query.$and = [{ $or: [{ accessType: "paid" }, { price: { $gt: 0 } }] }]
+        }
+
+        const [courses, totalCourses] = await Promise.all([
+            CourseModel.find(query)
+                .sort({ publishedAt: -1, createdOn: -1, _id: -1 })
+                .skip(skip)
+                .limit(limit),
+            CourseModel.countDocuments(query),
+        ])
+
         return JSON.parse(JSON.stringify({ courses, totalCourses }));
     } catch (error: any) {
-       return err(error, "f", {ret: error.message})
+        console.error(error);
+        return { error: error?.message || "Could not load courses" };
     }
 }

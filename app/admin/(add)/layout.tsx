@@ -1,60 +1,40 @@
 "use client";
+
+import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-
+import { FileText, GraduationCap, Package, ShieldCheck } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { JSX } from "react";
-// import { ModeToggle } from "@/components/mode-toggle";
-import ProductCard from "@/components/product/product-card";
-import { useAddProducts } from "@/store";
-import { IProduct } from "@/modals/product.model";
-import { ProductOptions } from "@/types";
 
-function AddRootPage({ children }: { children: JSX.Element }) {
-    const options: ProductOptions = {
-        
-    };
-    const pathname = usePathname()
+const tabs = [
+  { value: "product", route: "/admin/add-product", href: "/admin/add-product", label: "Products", short: "Product", icon: Package },
+  { value: "blog", route: "/admin/add-blog", href: "/admin/add-blog", label: "Articles", short: "Article", icon: FileText },
+  { value: "course", route: "/admin/add-course", href: "/admin/add-course", label: "Courses", short: "Course", icon: GraduationCap },
+  { value: "admin", route: "/admin/add-admin", href: "/admin/add-admin", label: "Admins", short: "Admin", icon: ShieldCheck },
+];
 
-    const router = useRouter();
-    const { productAdds } = useAddProducts()
-    const handleTabChange = (value: string) => {
-        const routes = {
-            product: "/admin/add-product",
-            blog: "/admin/add-blog",
-            course: "/admin/add-course",
-            admin: "/admin/add-admin"
-        }
-        router.push(routes[value as "product"]);
-    };
+export default function AddRootLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const active = tabs.find((tab) => pathname.startsWith(tab.route))?.value ?? "product";
 
-    return (
-        <div className="w-full">
-            <Tabs defaultValue="product" value={pathname.split("-")[1]?.split("/")[0]?.split("?")[0]} onValueChange={handleTabChange} className="w-[400px]">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="product">Add Product</TabsTrigger>
-                    <TabsTrigger value="blog">Add Blog</TabsTrigger>
-                    <TabsTrigger value="course">Add Course</TabsTrigger>
-                    <TabsTrigger value="admin">Add Admin</TabsTrigger>
-                </TabsList>
-
-            </Tabs>
-            <div className="w-full flex md:flex-row flex-col gap-4">
-                {children}
-                <div className="">
-                    {
-                        productAdds.map((product: Partial<IProduct>) => (
-                            <ProductCard key={product.slug!} product={product} options={
-                                options
-                            } />
-                        ))
-                    }
-                </div>
-            </div>
-            {/* <div className="fixed bottom-1 lg:left-74">
-                <ModeToggle />
-            </div> */}
+  return (
+    <div className="w-full">
+      <div className="sticky top-16 z-20 border-b bg-background/90 backdrop-blur-md">
+        <div className="mx-auto w-full max-w-6xl px-5 py-2.5 sm:px-8">
+          <Tabs value={active} onValueChange={(value) => router.push(tabs.find((tab) => tab.value === value)?.href ?? "/admin/add-product")}>
+            <TabsList className="h-10 justify-start gap-1 bg-muted/60 p-1">
+              {tabs.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 px-3 text-xs sm:text-sm">
+                  <tab.icon size={15} />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.short}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
-    );
+      </div>
+      {children}
+    </div>
+  );
 }
-
-export default AddRootPage;

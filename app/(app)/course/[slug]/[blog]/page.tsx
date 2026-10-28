@@ -1,22 +1,39 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import MarkdownPreview from "@uiw/react-markdown-preview";
 import { useTheme } from "next-themes";
-import { useDataStore } from "@/store";
-import { IBlog } from "@/modals/blog.model";
-import { getBlog, getBlogs } from "@/server-functions/blog";
-import { getCourse } from "@/server-functions/course";
 import { toast } from "react-toastify";
-import Loader from "@/components/loader";
+import {
+  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, Loader2, Lock,
+  ShieldCheck, Sparkles,
+} from "lucide-react";
 import rehypeHighlight from "rehype-highlight";
+import Loader from "@/components/loader";
+import { Button } from "@/components/ui/button";
+import { getCourseLesson } from "@/server-functions/course";
+import { getBlogs } from "@/server-functions/blog";
+import { startCheckout } from "@/server-functions/library";
+import { formatPrice } from "@/components/product/product-card";
+import type { IBlog } from "@/modals/blog.model";
+import type { ICourse } from "@/modals/course.model";
 import "@/components/themes/codetheme.css";
 
 type TocItem = { id: string; title: string; level: number };
 type Suggestion = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string };
 type RelatedProduct = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string; price?: number; currency?: string; status?: string };
 type Suggestions = { course?: Suggestion; blogs: Suggestion[] };
+type Access = {
+  signedIn: boolean;
+  owned: boolean;
+  enrolled: boolean;
+  orderStatus: string | null;
+  orderId: string | null;
+  progressPercent: number;
+};
+type LessonSummary = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string };
 
 function createSlug(title: string) {
   return title.toLowerCase().trim().replace(/[`*_~]/g, "")
@@ -41,60 +58,88 @@ function extractHeadings(markdown: string): TocItem[] {
 
 export default function Blog(props: any) {
   const { theme, systemTheme } = useTheme();
-  const bg = useDataStore<Partial<IBlog> | undefined>("blog", undefined)();
+  const router = useRouter();
+  const pathname = usePathname();
   const params = React.use(props.params) as any;
+  const [blog, setBlog] = useState<Partial<IBlog> | null>(null);
+  const [course, setCourse] = useState<Partial<ICourse> | null>(null);
+  const [lesson, setLesson] = useState<LessonSummary | null>(null);
+  const [access, setAccess] = useState<Access | null>(null);
+  const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestions>({ blogs: [] });
   const currentTheme = ["dark", "blue"].includes(
     (theme === "system" ? systemTheme : theme) as string
   ) ? "dark" : "light";
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchBlog = async () => {
-      try {
-        const blog = await getBlog({ slug: params?.blog, products: true });
-        if (cancelled) return;
-        if ("error" in blog) toast.error(blog.error);
-        else bg.setData(blog);
-      } catch {
-        if (!cancelled) toast.error("Unable to load this article.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    if (loading) void fetchBlog();
-    return () => { cancelled = true; };
-  }, [params?.blog, bg, loading]);
+  const courseSlug = params?.slug as string | undefined;
+  const lessonSlug = params?.blog as string | undefined;
 
   useEffect(() => {
-    const current = bg?.data;
-    if (!current?.slug) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    getCourseLesson({ courseSlug, lessonSlug })
+      .then((result) => {
+        if (cancelled) return;
+        if ("error" in result) {
+          setError(result.error);
+          setCourse(null);
+          setBlog(null);
+          setLocked(false);
+          return;
+        }
+        setCourse(result.course);
+        setLesson(result.lesson);
+        setAccess(result.access as Access);
+        if (result.locked) {
+          setLocked(true);
+          setBlog(null);
+          return;
+        }
+        setLocked(false);
+        setBlog((result.blog as Partial<IBlog>) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Unable to load this lesson.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [courseSlug, lessonSlug]);
+
+  useEffect(() => {
+    if (!blog?.slug) return;
     let cancelled = false;
     const loadSuggestions = async () => {
       try {
-        const [courseResult, blogResult] = await Promise.all([
-          params?.slug ? getCourse({ slug: params.slug, blogs: true }) : Promise.resolve(null),
-          getBlogs({ skip: 0, postsPerPage: 8, search: current.tags?.[0] || current.category?.[0] || current.title?.split(" ")[0] || "" }),
-        ]);
+        const blogResult = await getBlogs({
+          skip: 0,
+          postsPerPage: 8,
+          publicOnly: true,
+          search: blog.tags?.[0] || blog.category?.[0] || blog.title?.split(" ")[0] || "",
+        });
         if (cancelled) return;
-        const course = courseResult && !("error" in courseResult) ? courseResult as any : undefined;
         const allBlogs = blogResult && !("error" in blogResult) ? (blogResult as any).blogs || [] : [];
         const related = allBlogs
-          .filter((item: Suggestion) => item.slug && item.slug !== current.slug)
+          .filter((item: Suggestion) => item.slug && item.slug !== blog.slug)
           .slice(0, 4);
-        setSuggestions({ course: course?.slug ? course : undefined, blogs: related });
+        setSuggestions({ course: course?.slug ? (course as Suggestion) : undefined, blogs: related });
       } catch {
         if (!cancelled) setSuggestions({ blogs: [] });
       }
     };
     void loadSuggestions();
     return () => { cancelled = true; };
-  }, [bg?.data?.slug, bg?.data?.tags, bg?.data?.category, bg?.data?.title, params?.slug]);
+  }, [blog?.slug, blog?.tags, blog?.category, blog?.title, course?.slug]);
 
-  const headings = useMemo(() => extractHeadings(bg?.data?.content ?? ""), [bg?.data?.content]);
-  const relatedProducts = (Array.isArray(bg?.data?.products) ? bg.data.products : []) as RelatedProduct[];
-  const visibleProducts = relatedProducts.filter((product) => product?.slug && product?.status === "published").slice(0, 4);
+  const headings = useMemo(() => extractHeadings(blog?.content ?? ""), [blog?.content]);
+  const relatedProducts = (Array.isArray(blog?.products) ? blog.products : []) as RelatedProduct[];
+  // Draft products are filtered by getBlog's populate match; keep anything with a slug.
+  const visibleProducts = relatedProducts.filter((product) => Boolean(product?.slug)).slice(0, 4);
 
   useEffect(() => {
     if (loading) return;
@@ -105,10 +150,132 @@ export default function Blog(props: any) {
       const item = headings[index];
       if (item) heading.id = item.id;
     });
-  }, [loading, headings, bg?.data?.content]);
+  }, [loading, headings, blog?.content]);
+
+  const buyCourse = useCallback(async () => {
+    if (!course?._id) return;
+    if (!access?.signedIn) {
+      router.push(`/auth?callbackUrl=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await startCheckout({ courseId: String(course._id) });
+      if (result.error) {
+        if (result.requiresAuth) {
+          router.push(`/auth?callbackUrl=${encodeURIComponent(pathname)}`);
+          return;
+        }
+        toast.error(result.error);
+        return;
+      }
+      if (result.status === "pending") {
+        toast.info(result.message || "Order saved and awaiting confirmation.");
+        setAccess((current) => current ? { ...current, orderStatus: "pending", orderId: result.orderId || current.orderId } : current);
+      } else {
+        toast.success("Payment confirmed. Enjoy the course!");
+        window.location.reload();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [access?.signedIn, course?._id, pathname, router]);
 
   if (loading) return <Loader />;
-  if (!bg?.data) return <div className="fixed inset-0 flex items-center justify-center">Not Found</div>;
+
+  if (error) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center px-4 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><BookOpen size={22} /></span>
+        <h1 className="mt-4 text-xl font-semibold">Lesson unavailable</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+        <Button asChild variant="outline" className="mt-5">
+          <Link href={courseSlug ? `/course/${courseSlug}` : "/courses"}>
+            <ArrowLeft size={15} /> Back to course
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (locked && course) {
+    const lessonCount = Array.isArray(course.content) ? course.content.length : 0;
+    const pending = access?.orderStatus === "pending";
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+        <Link href={`/course/${course.slug}`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft size={14} /> Back to course
+        </Link>
+
+        <div className="mt-4 overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <div className="relative aspect-video bg-muted">
+            {course.thumbnail ? (
+              <img src={course.thumbnail} alt="" className="h-full w-full object-cover" />
+            ) : null}
+            <div className="absolute inset-0 bg-black/55" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
+              <span className="grid h-14 w-14 place-items-center rounded-full bg-white/15 backdrop-blur">
+                <Lock size={24} />
+              </span>
+              <p className="mt-3 text-sm font-medium">This lesson is locked</p>
+              {lesson?.title && <p className="mt-1 max-w-md text-xs text-white/75">{lesson.title}</p>}
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-7">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles size={12} /> Course
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">{course.title}</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {lesson?.title ? `“${lesson.title}” is part of this course. ` : ""}
+              Purchase the course to unlock all {lessonCount} lesson{lessonCount === 1 ? "" : "s"}, track your progress and keep it in your library.
+            </p>
+
+            <div className="mt-5 flex flex-col gap-4 rounded-xl border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Full course access</p>
+                <p className="mt-0.5 text-2xl font-semibold">{formatPrice(course.price, course.currency)}</p>
+              </div>
+              <div className="flex flex-col gap-2 sm:min-w-[230px]">
+                <Button onClick={buyCourse} disabled={busy || pending} className="gap-2">
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : pending ? <BadgeCheck size={16} /> : <ShieldCheck size={16} />}
+                  {pending ? "Awaiting confirmation" : access?.signedIn ? "Buy course" : "Sign in to buy"}
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href={`/course/${course.slug}`}>View course details</Link>
+                </Button>
+              </div>
+            </div>
+
+            {pending && (
+              <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">
+                Order <span className="font-medium text-foreground">{access?.orderId}</span> is waiting for administrator confirmation.
+              </p>
+            )}
+            {!access?.signedIn && (
+              <p className="mt-3 text-center text-[11px] text-muted-foreground">Sign in first — you will return to this lesson afterwards.</p>
+            )}
+
+            <ul className="mt-6 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              {[
+                `Every lesson in the course (${lessonCount})`,
+                "Progress saved to your library",
+                "Lifetime access from any device",
+                "No repeated purchases",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!blog) return <div className="fixed inset-0 flex items-center justify-center">Not Found</div>;
 
   return (
     <div data-color-mode={currentTheme} className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-5 px-3 py-5 sm:px-5 lg:grid-cols-[190px_minmax(0,1fr)_230px] lg:gap-5 xl:grid-cols-[205px_minmax(0,1fr)_250px]">
@@ -138,7 +305,7 @@ export default function Blog(props: any) {
           }}
           rehypePlugins={[rehypeHighlight]}
           className="mx-auto w-full max-w-4xl rounded-xl p-3 sm:p-5"
-          source={bg.data.content}
+          source={blog.content}
         />
 
         {visibleProducts.length > 0 && (
@@ -202,7 +369,7 @@ export default function Blog(props: any) {
               <ul className="space-y-3">
                 {suggestions.blogs.map((item) => (
                   <li key={item._id || item.slug}>
-                    <Link href={`/course/${params?.slug || ""}/${item.slug}`} className="group flex gap-2.5 rounded-lg p-1 transition-colors hover:bg-muted/60">
+                    <Link href={`/t/${item.slug}`} className="group flex gap-2.5 rounded-lg p-1 transition-colors hover:bg-muted/60">
                       {item.thumbnail && <img src={item.thumbnail} alt="" className="h-14 w-16 shrink-0 rounded-md object-cover" />}
                       <span className="min-w-0">
                         <span className="block text-[13px] font-medium leading-5 group-hover:underline">{item.title}</span>

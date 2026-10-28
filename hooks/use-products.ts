@@ -1,6 +1,6 @@
 "use client"
 import { IProduct } from "@/modals/product.model";
-import { getProductFromServer, getProductsFromServer } from "@/server-functions/product";
+import { getPublishedProduct, getPublishedProducts } from "@/server-functions/product";
 import { create } from "zustand";
 
 interface ProductsStore {
@@ -10,7 +10,7 @@ interface ProductsStore {
     totalProducts: number;
     increasePage: () => void;
     getProducts(arg0: { username?: string, page: number, postsPerPage?: number, boughtProducts?: boolean
-        category?: string, search?:string;
+        category?: string, search?: string;
      }, isInfiniteScroll?: boolean): Promise<void>;
     getProduct: (slug: string) => Promise<void | false>
 }
@@ -21,26 +21,32 @@ const useProductsStore = create<ProductsStore>((set) => ({
     product: {} as IProduct,
     getProduct: async (slug) => {
         try {
-            const res = await getProductFromServer(slug);
-            if (!res) {
+            const res = await getPublishedProduct(slug);
+            if ("error" in res) {
                 set({ product: {} as IProduct });
                 return false;
             }
-            set({ product: res });
+            set({ product: res.product as IProduct });
         } catch (error) {
             console.error('Error fetching products:', error)
         }
     },
     getProducts: async (o, isInfiniteScroll = false) => {
-        const skip = isInfiniteScroll ? (o.page - 1) * (o?.postsPerPage || 20) : 0;
+        const pageSize = o?.postsPerPage || 20
+        const skip = isInfiniteScroll ? (o.page - 1) * pageSize : 0
         try {
-            const skipPageData = JSON.parse(JSON.stringify({ skip, postsPerPage: o.postsPerPage || 20, 
-                username: o.username, boughtProducts: o.boughtProducts,
-                category: o.category, search: o.search
-            }));
-            const res = await getProductsFromServer(skipPageData);
-
-
+            const res = await getPublishedProducts({
+                skip,
+                postsPerPage: pageSize,
+                search: o?.search,
+                tag: o?.category,
+            })
+            if ("error" in res) return
+            set((state) => ({
+                products: isInfiniteScroll ? [...state.products, ...(res.products as IProduct[])] : (res.products as IProduct[]),
+                totalProducts: res.totalProducts,
+                page: o.page,
+            }))
         } catch (error) {
             console.error(error);
         }

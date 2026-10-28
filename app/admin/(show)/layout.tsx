@@ -1,10 +1,10 @@
 "use client";
+import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { JSX } from "react";
 
-function AddRootPage({ children }: { children: JSX.Element }) {
+function AddRootPage({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname()
     const handleTabChange = (value: string) => {

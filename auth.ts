@@ -1,8 +1,9 @@
 import NextAuth, { Session } from "next-auth";
 import auth_config from "./auth_config";
 import { createUser, checkExistingUser } from "@/server-functions/user";
-import { IUser } from "@/modals/user.model";
-import { userFilter } from "./helpers";
+import { UserModel, type IUser } from "@/modals/user.model";
+import connectDB from "@/connectDB";
+import { isSuperAdminEmail, userFilter } from "./helpers";
 
 declare module 'next-auth' {
   interface Session {
@@ -30,7 +31,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.email,
           name: user.name,
           image: user.image || "",
+          role: isSuperAdminEmail(user.email) ? "admin" : undefined,
         });
+      } else if (
+        typeof existingUser === "object" &&
+        isSuperAdminEmail(user.email) &&
+        existingUser.role !== "admin"
+      ) {
+        await connectDB();
+        await UserModel.updateOne(
+          { email: user.email.trim().toLowerCase() },
+          { $set: { role: "admin", status: "active" } }
+        );
       }
 
       return true;

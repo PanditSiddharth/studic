@@ -6,8 +6,30 @@ import { IUser } from "./modals/user.model";
 const plainId = (value: any) => value == null ? undefined : String(value);
 
 export const userFilter = (user: any = {}): Partial<IUser> => {
-    const { _id, name, email, password, image, role, status, about, phone, username, createdOn, updatedAt }: Partial<IUser> = user;
-    return JSON.parse(JSON.stringify({ _id: plainId(_id), name, email, password, image, role, status, about, phone, username, createdOn, updatedAt }));
+    const { _id, name, email, image, role, status, about, phone, username, createdOn, updatedAt }: Partial<IUser> = user;
+    return JSON.parse(JSON.stringify({ _id: plainId(_id), name, email, image, role, status, about, phone, username, createdOn, updatedAt }));
+};
+
+/**
+ * Accounts that may create or remove other administrators. The owner account is
+ * always included; additional emails can be supplied at runtime via the
+ * comma-separated SUPER_ADMIN_EMAILS environment variable.
+ */
+export const SUPER_ADMIN_EMAILS = ["mynmss3@gmail.com"];
+
+export const isSuperAdminEmail = (email?: string | null): boolean => {
+    const normalized = String(email || "").trim().toLowerCase();
+    if (!normalized) return false;
+    const configured = [...SUPER_ADMIN_EMAILS, ...String(process.env.SUPER_ADMIN_EMAILS || "").split(",")]
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+    return configured.includes(normalized);
+};
+
+const normalizeCategories = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.map((item) => String(item)).filter(Boolean);
+    if (value === null || value === undefined || value === "") return [];
+    return [String(value)];
 };
 
 export const blogFilter = (blog: any = {}): Partial<IBlog> => {
@@ -18,10 +40,13 @@ export const blogFilter = (blog: any = {}): Partial<IBlog> => {
     }: Partial<IBlog> = blog;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, status, description, thumbnail, content,
-        tags, category, products, author: plainId(author), publishedAt, updatedAt,
+        tags, category: normalizeCategories(category), products, author: plainId(author), publishedAt, updatedAt,
         createdOn, estimatedMinutes, course: plainId(course), seoTitle, seoDescription
     }));
 };
+
+/** Legacy blog records may store a single category as a string. */
+export const normalizeBlogCategories = (value: unknown) => normalizeCategories(value);
 
 export const courseFilter = (course: any = {}): Partial<ICourse> => {
     const {
@@ -37,7 +62,10 @@ export const courseFilter = (course: any = {}): Partial<ICourse> => {
 };
 
 export const productFilter = (product: any = {}, str?: any): Partial<IProduct> => {
-    const copy = { ...product };
+    // Mongoose documents expose fields through getters, so spreading the document
+    // itself would drop `_id`, `title`, etc. Convert it to a plain object first.
+    const source = product && typeof product.toObject === "function" ? product.toObject() : product;
+    const copy = { ...source };
     str = str?.trim();
     if (str && str.includes("!")) {
         str = str.replace("!", "");

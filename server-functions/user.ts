@@ -5,7 +5,7 @@ import { IUser, UserModel } from "@/modals/user.model"
 import { randomUUID } from "crypto"
 import { AnalyticsModel, IAnalytics } from "@/modals/analytics.model";
 import { ProductModel } from "@/modals/product.model";
-import { err, userFilter } from "@/helpers";
+import { err, userFilter, isSuperAdminEmail } from "@/helpers";
 
 const getQuery = (id: string) => id.startsWith("@") ? { username: id.slice(1) } :
     (id.includes("@") ? { email: id } : { _id: id })
@@ -71,21 +71,38 @@ export const getSessionUser = async () => {
 export const updateUser = async (user: Partial<IUser>) => {
     try {
         const sUser = await getSessionUser()
-        let query = {} as any
         if (!sUser)
             return { error: "Not logged in" }
-        if(user.role == "admin"){
-            if(user?.email) query = { email: user.email };
-            else if(user._id) query = { _id: user._id };
-            else return {error: "Provide email or _id"}
+
+        const isAdmin = sUser.role === "admin"
+        const canManageRoles = isAdmin && isSuperAdminEmail(sUser.email)
+
+        let query: Record<string, unknown>
+        if (isAdmin) {
+            if (user?.email) query = { email: String(user.email).trim().toLowerCase() }
+            else if (user._id) query = { _id: user._id }
+            else return { error: "Provide email or _id" }
         } else {
-            query = { email: sUser.email }
+            query = { _id: sUser._id }
         }
+
+        // Only these fields can ever be written through this generic helper.
+        // Role changes are reserved for the owner account and passwords are
+        // handled by dedicated, hashed flows.
+        const payload: Record<string, unknown> = {}
+        for (const key of ["name", "username", "about", "phone", "image"] as const) {
+            if (key in user) payload[key] = user[key]
+        }
+        if (canManageRoles && user.role) payload.role = user.role
+        if (isAdmin && user.status) payload.status = user.status
+
+        if (!Object.keys(payload).length)
+            return { error: "Nothing to update" }
 
         await connectDB()
 
-        const updatedUser = await UserModel.findOneAndUpdate(query, user, { new: true })
-        if (!updateUser)
+        const updatedUser = await UserModel.findOneAndUpdate(query, payload, { new: true, runValidators: true })
+        if (!updatedUser)
             return { error: "User not found" }
         return userFilter(updatedUser)
     } catch (error) {

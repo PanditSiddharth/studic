@@ -1,14 +1,15 @@
 "use client"
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export const MyField = (value: {
   name: string,
-  label?: string,
+  label?: ReactNode,
   className?: string,
   placeholder?: string,
-  description?: string,
+  description?: ReactNode,
+  required?: boolean,
   fields?: any,
   form?: any,
   input?: (field: any) => ReactNode
@@ -20,7 +21,12 @@ export const MyField = (value: {
       <FormItem
         className={value?.className}
       >
-        {value?.label && <FormLabel>{value.label}</FormLabel>}
+        {value?.label && (
+          <FormLabel>
+            {value.label}
+            {value.required ? <span aria-hidden className="ml-0.5 text-destructive">*</span> : null}
+          </FormLabel>
+        )}
         <FormControl>
           {value?.input ? value.input(field) :
             <Input placeholder={value?.placeholder} {...field} {...value?.fields} />

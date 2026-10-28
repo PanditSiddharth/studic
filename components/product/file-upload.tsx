@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { CldUploadButton } from 'next-cloudinary'
-import { FileIcon } from 'lucide-react'
+import { FileIcon, RefreshCw } from 'lucide-react'
+import { cn } from '@/modals/utils'
 
 interface FileUploadProps {
-  onChange: (src: string) => void,
-  value?: string, // initial value for the input field
+  onChange: (src: string) => void
+  value?: string // current file URL
+  className?: string
 }
 
 interface CloudinaryUploadResponse {
@@ -16,47 +17,53 @@ interface CloudinaryUploadResponse {
   }
 }
 
-export const FileUpload = ({ onChange, value }: FileUploadProps) => {
-  const [fileName, setFileName] = useState<string | null>("test.png")
-  useEffect(() => {
-    onChange(value || "test.png")
-    // eslint-disable-next-line 
-  }, [])
+const buttonProps = { type: "button" } as const
+
+const safeDecode = (value: string) => {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+export const FileUpload = ({ onChange, value, className }: FileUploadProps) => {
+  // Derived from the stored URL so editing an existing product shows the real file
+  // instead of overwriting the field on mount.
+  const rawName = value ? safeDecode(value.split('/').pop()?.split('?')[0] || '') : ''
+  const fileName = rawName || ''
 
   return (
     <CldUploadButton
-      className="w-full"
+      {...buttonProps}
+      className={cn(
+        'group block w-full overflow-hidden rounded-xl border-2 border-dashed border-border bg-muted/20 text-left transition-colors',
+        'hover:border-primary/60 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        className
+      )}
       uploadPreset="sidssite"
-      options={{ maxFiles: 1,  resourceType: "raw" }}
-      onSuccess={(value: unknown) => {
-        const response = value as CloudinaryUploadResponse
-        onChange(response.info.secure_url)
-        setFileName(response.info.original_filename || "test.png")
+      options={{ maxFiles: 1, resourceType: 'raw' }}
+      onSuccess={(result: unknown) => {
+        const response = result as CloudinaryUploadResponse
+        if (response?.info?.secure_url) onChange(response.info.secure_url)
       }}
-      
     >
-      <div className="border-2 border-dashed border-primary/50 rounded-lg p-4 hover:bg-primary/5 transition-colors duration-200 ease-in-out">
-        <div className="flex flex-col items-center justify-center gap-4">
-          <div className="w-20 h-20 bg-primary/10 rounded-md flex items-center justify-center">
-            <FileIcon className="w-10 h-10 text-primary/50" />
-          </div>
-          <div className="text-center">
-            <h1 className="text-sm font-medium text-primary">
-              {fileName ? 'Change File' : 'Upload File'}
-            </h1>
-            {fileName && (
-              <p className="text-xs text-primary/70 mt-1 max-w-[200px] truncate">
-                {fileName}
-              </p>
-            )}
-            {!fileName && (
-              <p className="text-xs text-primary/70 mt-1">
-                Upload Your File
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
+      <span className="flex items-center gap-4 p-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <FileIcon size={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">
+            {fileName ? 'Attached file' : 'Attach a downloadable file'}
+          </span>
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+            {fileName || 'PDF, ZIP, or any file · uploaded to Cloudinary'}
+          </span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-muted-foreground transition-colors group-hover:border-primary/40 group-hover:text-primary">
+          <RefreshCw size={12} /> {fileName ? 'Replace' : 'Upload'}
+        </span>
+      </span>
     </CldUploadButton>
   )
 }
