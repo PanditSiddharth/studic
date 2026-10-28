@@ -1,9 +1,2 @@
-import React from 'react'
-
-const Courses = () => {
-  return (
-    <div>Courses</div>
-  )
-}
-
-export default Courses
+import AdminContentList from "@/components/admin/admin-content-list";
+export default function CoursesPage() { return <AdminContentList kind="courses" />; }
