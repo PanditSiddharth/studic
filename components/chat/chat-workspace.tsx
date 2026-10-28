@@ -11,7 +11,7 @@ import {
 import { cn } from "@/modals/utils";
 import type { ChatMessage, ChatSummary } from "@/modals/chat.model";
 import {
-  getChat, getChats, getChatMessages, sendChatMessage,
+  deleteChatMessage, getChat, getChats, getChatMessages, sendChatMessage,
 } from "@/server-functions/chat";
 import ChatSidebar from "./chat-sidebar";
 import ChatWindow from "./chat-window";
@@ -208,6 +208,15 @@ export default function ChatWorkspace() {
     await openChat(chatId);
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    const result = await deleteChatMessage(messageId);
+    if (!result || "error" in result) {
+      toast.error(result && "error" in result ? result.error : "Could not delete message");
+      return;
+    }
+    setMessages((current) => current.filter((message) => message._id !== messageId));
+  };
+
   if (status === "loading" || (status === "authenticated" && loadingChats && chats.length === 0)) {
     return (
       <div className="flex h-[calc(100dvh-4rem)] items-center justify-center text-muted-foreground">
@@ -248,6 +257,8 @@ export default function ChatWorkspace() {
           onSend={handleSend}
           onBack={goBack}
           onInfo={() => setInfoOpen(true)}
+          canModerate={Boolean(chat?.moderation?.canManage)}
+          onDelete={(messageId) => void handleDeleteMessage(messageId)}
         />
 
         {chat ? (

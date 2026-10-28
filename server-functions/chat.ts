@@ -19,6 +19,7 @@ const isAdmin = (user: any) => user?.role === "admin";
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const COMMUNITY_CHAT_KEY = "all-site-users";
 const COMMUNITY_CHAT_NAME = "Studic Community";
+const RESTRICTED_WORD_MUTE_SECONDS = 10 * 60;
 
 async function ensureCommunityChat(userId: string) {
   const users = await UserModel.find({ status: { $ne: "deleted" } }).select("_id").lean();
@@ -59,6 +60,19 @@ const isParticipant = (chat: any, userId: string) =>
 
 const isGroupAdmin = (chat: any, userId: string) =>
   (chat?.admins || []).some((admin: any) => idOf(admin) === String(userId));
+
+const canManageChat = (chat: any, user: any) =>
+  isAdmin(user) || idOf(chat?.createdBy) === String(user?._id) || isGroupAdmin(chat, String(user?._id));
+
+const activeMute = (chat: any, userId: string) =>
+  (chat?.mutedUsers || []).find((entry: any) =>
+    idOf(entry.user) === String(userId) && entry.until && new Date(entry.until).getTime() > Date.now()
+  );
+
+const containsRestrictedWord = (text: string, words: string[]) => {
+  const normalized = text.toLocaleLowerCase();
+  return words.find((word) => word && normalized.includes(word.toLocaleLowerCase()));
+};
 
 const toMessage = (message: any): ChatMessage => ({
   _id: idOf(message?._id),
@@ -115,6 +129,11 @@ const toChatSummary = (
     isGroupAdmin: isGroupAdmin(chat, viewerId),
     createdBy: idOf(chat?.createdBy),
     systemKey: chat?.systemKey || undefined,
+    moderation: chat?.kind === "group" ? {
+      slowModeSeconds: Number(chat?.slowModeSeconds || 0),
+      restrictedWords: canManageChat(chat, viewer) ? (chat?.restrictedWords || []) : [],
+      canManage: canManageChat(chat, viewer),
+    } : undefined,
     unread: state.unread,
   };
 };
@@ -294,10 +313,31 @@ export async function sendChatMessage(input: { chatId: string; text: string }) {
 
   try {
     await connectDB();
-    const chat = await ChatModel.findById(input.chatId).select("participants lastMessageAt");
+    const chat = await ChatModel.findById(input.chatId)
+      .select("kind participants lastMessageAt slowModeSeconds restrictedWords mutedUsers admins createdBy");
     if (!chat) return { error: "Chat not found" };
     if (!isParticipant(chat, String(user._id))) {
       return { error: "Only members can send messages in this chat" };
+    }
+    const mute = activeMute(chat, String(user._id));
+    if (mute) {
+      const seconds = Math.max(1, Math.ceil((new Date(mute.until).getTime() - Date.now()) / 1000));
+      return { error: `You are muted for ${seconds} more seconds` };
+    }
+    if (chat.kind === "group" && !canManageChat(chat, user)) {
+      const cooldown = Number(chat.slowModeSeconds || 0);
+      if (cooldown && chat.lastMessageAt) {
+        const remaining = cooldown - Math.floor((Date.now() - new Date(chat.lastMessageAt).getTime()) / 1000);
+        if (remaining > 0) return { error: `Slow mode: wait ${remaining} seconds` };
+      }
+      if (containsRestrictedWord(text, chat.restrictedWords || [])) {
+        const until = new Date(Date.now() + RESTRICTED_WORD_MUTE_SECONDS * 1000);
+        await ChatModel.updateOne(
+          { _id: chat._id },
+          { $pull: { mutedUsers: { user: user._id } }, $push: { mutedUsers: { user: user._id, until } } }
+        );
+        return { error: `Restricted word detected. You are muted for ${RESTRICTED_WORD_MUTE_SECONDS / 60} minutes.` };
+      }
     }
 
     const message = await MessageModel.create({
@@ -336,6 +376,75 @@ export async function sendChatMessage(input: { chatId: string; text: string }) {
   } catch (error: any) {
     console.error("Error sending message", error);
     return { error: error?.message || "Could not send your message" };
+  }
+}
+
+export async function updateChatModeration(input: {
+  chatId: string;
+  slowModeSeconds: number;
+  restrictedWords: string[];
+}) {
+  const user = await getSessionUser();
+  if (!user?._id) return { error: "Sign in to manage this group" };
+  if (!mongoose.isValidObjectId(input?.chatId)) return { error: "Chat not found" };
+  const slowModeSeconds = Math.min(86400, Math.max(0, Math.floor(Number(input.slowModeSeconds) || 0)));
+  const restrictedWords = Array.from(new Set(
+    (input.restrictedWords || [])
+      .map((word) => String(word).trim().toLocaleLowerCase())
+      .filter((word) => word.length >= 2 && word.length <= 60)
+  )).slice(0, 100);
+  try {
+    await connectDB();
+    const chat = await ChatModel.findById(input.chatId).select("kind createdBy admins");
+    if (!chat || chat.kind !== "group") return { error: "Group not found" };
+    if (!canManageChat(chat, user)) return { error: "Only the group owner or an admin can change restrictions" };
+    await ChatModel.updateOne({ _id: chat._id }, { $set: { slowModeSeconds, restrictedWords } });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating chat moderation", error);
+    return { error: error?.message || "Could not update group restrictions" };
+  }
+}
+
+export async function muteChatUser(input: { chatId: string; userId: string; seconds: number }) {
+  const user = await getSessionUser();
+  if (!user?._id || !mongoose.isValidObjectId(input?.chatId) || !mongoose.isValidObjectId(input?.userId)) {
+    return { error: "Invalid moderation request" };
+  }
+  const seconds = Math.min(604800, Math.max(10, Math.floor(Number(input.seconds) || 0)));
+  try {
+    await connectDB();
+    const chat = await ChatModel.findById(input.chatId).select("kind createdBy admins participants");
+    if (!chat || chat.kind !== "group") return { error: "Group not found" };
+    if (!canManageChat(chat, user)) return { error: "Only the group owner or an admin can mute users" };
+    if (!isParticipant(chat, input.userId)) return { error: "User is not a group member" };
+    if (String(user._id) === input.userId) return { error: "You cannot mute yourself" };
+    await ChatModel.updateOne(
+      { _id: chat._id },
+      { $pull: { mutedUsers: { user: input.userId } }, $push: { mutedUsers: { user: input.userId, until: new Date(Date.now() + seconds * 1000) } } }
+    );
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error muting chat user", error);
+    return { error: error?.message || "Could not mute user" };
+  }
+}
+
+export async function deleteChatMessage(messageId: string) {
+  const user = await getSessionUser();
+  if (!user?._id || !mongoose.isValidObjectId(messageId)) return { error: "Invalid message" };
+  try {
+    await connectDB();
+    const message = await MessageModel.findById(messageId).select("chat");
+    if (!message) return { error: "Message not found" };
+    const chat = await ChatModel.findById(message.chat).select("kind createdBy admins");
+    if (!chat || chat.kind !== "group") return { error: "Group not found" };
+    if (!canManageChat(chat, user)) return { error: "Only group admins can delete messages" };
+    await MessageModel.deleteOne({ _id: message._id });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting chat message", error);
+    return { error: error?.message || "Could not delete message" };
   }
 }
 

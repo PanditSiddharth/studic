@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { Crown, Lock, ShieldCheck, Users } from "lucide-react";
+import { toast } from "react-toastify";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { ChatSummary } from "@/modals/chat.model";
 import ChatAvatar from "./chat-avatar";
 import { cn } from "@/modals/utils";
+import { muteChatUser, updateChatModeration } from "@/server-functions/chat";
 
 interface ChatInfoProps {
   chat: ChatSummary;
@@ -12,6 +17,28 @@ interface ChatInfoProps {
 }
 
 export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProps) {
+  const [slowMode, setSlowMode] = useState(String(chat.moderation?.slowModeSeconds || 0));
+  const [words, setWords] = useState((chat.moderation?.restrictedWords || []).join(", "));
+  const [saving, setSaving] = useState(false);
+
+  const saveModeration = async () => {
+    setSaving(true);
+    const result = await updateChatModeration({
+      chatId: chat._id,
+      slowModeSeconds: Number(slowMode) || 0,
+      restrictedWords: words.split(","),
+    });
+    setSaving(false);
+    if ("error" in result) toast.error(result.error);
+    else toast.success("Group restrictions updated");
+  };
+
+  const mute = async (userId: string) => {
+    const result = await muteChatUser({ chatId: chat._id, userId, seconds: 600 });
+    if ("error" in result) toast.error(result.error);
+    else toast.success("User muted for 10 minutes");
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <div className="border-b px-5 py-6 text-center">
@@ -69,6 +96,38 @@ export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProp
           </div>
         ) : null}
 
+        {chat.kind === "group" && chat.moderation?.canManage ? (
+          <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Group restrictions</p>
+            <label className="block text-xs">
+              Global slow mode (seconds)
+              <Input
+                type="number"
+                min={0}
+                max={86400}
+                value={slowMode}
+                onChange={(event) => setSlowMode(event.target.value)}
+                className="mt-1 h-8 text-xs"
+              />
+            </label>
+            <label className="block text-xs">
+              Restricted words (comma separated)
+              <Input
+                value={words}
+                onChange={(event) => setWords(event.target.value)}
+                placeholder="word1, word2"
+                className="mt-1 h-8 text-xs"
+              />
+            </label>
+            <Button type="button" size="sm" className="w-full" disabled={saving} onClick={() => void saveModeration()}>
+              {saving ? "Saving..." : "Save restrictions"}
+            </Button>
+            <p className="text-[10px] leading-4 text-muted-foreground">
+              Restricted words delete the attempted message and mute the sender for 10 minutes.
+            </p>
+          </div>
+        ) : null}
+
         <div>
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -111,6 +170,15 @@ export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProp
                     </span>
                   ) : participant.role === "admin" ? (
                     <ShieldCheck size={13} className="shrink-0 text-primary" aria-label="Studic admin" />
+                  ) : null}
+                  {chat.kind === "group" && chat.moderation?.canManage && !isMe && !isChatAdmin ? (
+                    <button
+                      type="button"
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold text-destructive hover:bg-destructive/10"
+                      onClick={() => void mute(participant._id)}
+                    >
+                      Mute 10m
+                    </button>
                   ) : null}
                 </li>
               );

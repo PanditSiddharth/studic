@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft, CheckCheck, Info, Loader2, Lock, MessageCircle, Send, ShieldCheck,
+  ArrowLeft, CheckCheck, Info, Loader2, Lock, MessageCircle, Send, ShieldCheck, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,8 @@ interface ChatWindowProps {
   onSend: (text: string) => Promise<boolean>;
   onBack: () => void;
   onInfo: () => void;
+  canModerate: boolean;
+  onDelete: (messageId: string) => void;
 }
 
 export default function ChatWindow({
@@ -33,6 +35,8 @@ export default function ChatWindow({
   onSend,
   onBack,
   onInfo,
+  canModerate,
+  onDelete,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -203,6 +207,16 @@ export default function ChatWindow({
                         >
                           {formatTime(message.createdAt)}
                           {own ? <CheckCheck size={12} /> : null}
+                          {canModerate ? (
+                            <button
+                              type="button"
+                              className="ml-1 opacity-60 hover:opacity-100"
+                              onClick={() => onDelete(message._id)}
+                              aria-label="Delete message"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          ) : null}
                         </span>
                       </div>
                     </div>

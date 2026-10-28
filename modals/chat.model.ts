@@ -35,6 +35,11 @@ export interface ChatSummary {
   isGroupAdmin: boolean;
   createdBy: string;
   systemKey?: string;
+  moderation?: {
+    slowModeSeconds: number;
+    restrictedWords: string[];
+    canManage: boolean;
+  };
   unread: number;
 }
 
@@ -59,6 +64,12 @@ export interface IChat {
   admins: mongoose.Types.ObjectId[] | string[];
   createdBy: mongoose.Types.ObjectId | string;
   systemKey?: string;
+  slowModeSeconds?: number;
+  restrictedWords?: string[];
+  mutedUsers?: Array<{
+    user: mongoose.Types.ObjectId | string;
+    until: Date;
+  }>;
   lastMessage?: {
     text: string;
     senderId: mongoose.Types.ObjectId | string;
@@ -106,6 +117,12 @@ const ChatSchema = new Schema<IChat>(
     admins: [{ type: Schema.Types.ObjectId, ref: "User" }],
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     systemKey: { type: String, trim: true },
+    slowModeSeconds: { type: Number, min: 0, max: 86400, default: 0 },
+    restrictedWords: { type: [String], default: [] },
+    mutedUsers: [{
+      user: { type: Schema.Types.ObjectId, ref: "User" },
+      until: { type: Date },
+    }],
     lastMessage: { type: LastMessageSchema },
     lastMessageAt: { type: Date, index: true },
   },
