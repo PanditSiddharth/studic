@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Model } from "mongoose";
 
-export type BlogStatus = "draft" | "private" | "free" | "paid";
+export type BlogStatus = "draft" | "private" | "public" | "unlisted" | "free" | "paid";
 export interface IBlog {
   _id?: string;
   slug: string;
@@ -26,7 +26,8 @@ export const BlogSchema = new Schema<IBlog>(
   {
     slug: { type: String, required: true, unique: true, trim: true, lowercase: true, index: true },
     title: { type: String, required: true, trim: true, maxlength: 160 },
-    status: { type: String, enum: ["draft", "private", "free", "paid"], default: "draft", index: true },
+    // "free" and "paid" remain accepted for backwards compatibility with existing records.
+    status: { type: String, enum: ["draft", "private", "public", "unlisted", "free", "paid"], default: "draft", index: true },
     description: { type: String, default: "", maxlength: 10000 },
     thumbnail: { type: String, default: "" },
     category: { type: [String], default: [], index: true },
