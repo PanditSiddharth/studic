@@ -1,89 +1,101 @@
 import { z } from "zod";
-import { IProduct } from "./product.model";
 
-// Define Zod schema for validation
+const slugSchema = z.string().trim().min(1, "Slug is required").max(180)
+  .regex(/^(?!-)(?!.*--)[a-z0-9-]+(?<!-)$/, "Use lowercase letters, numbers and single hyphens");
+
+const tagsSchema = z.array(z.string().trim().min(1)).default([]);
+const urlOrEmpty = z.string().url().or(z.literal("")).optional();
+
 export const userSettingsSchema = z.object({
-  name: z.string().min(1, "Name is required").max(50, "Max 50 letters allowed"),
-  username: z.string().min(4, "Min 4 letters required").max(20, "Max 20 letters allowed")
-    .regex(/^[A-Za-z0-9\s]+$/, "Only letters and numbers allowed"),
-  about: z.string().optional(),
-  role: z.enum(["student", "seller", "admin"], {
-    required_error: "Role is required",
-  }),
-  image: z.string().optional(),
-  phone: z.any().optional(),
-  account: z.any().optional(),
-  ifsc: z.string().optional(),
-})
-
-// Schema validation
-export const ZodUserSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  username: z.string().min(2, { message: "Username must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email." }),
-  phone: z.number().optional(),
-  image: z.string().url(),
+  name: z.string().trim().min(1).max(100),
+  username: z.string().trim().min(2).max(30).regex(/^[A-Za-z0-9_-]+$/),
+  about: z.string().max(500).optional(),
   role: z.enum(["student", "seller", "admin"]),
-  about: z.string().optional(),
-})
-  .superRefine((data, ctx) => {
-    function addIssue(condition: unknown, path: string, message: string) {
-      if (condition)
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message,
-          path: [path],
-        });
+  status: z.enum(["active", "suspended", "deleted"]).optional(),
+  image: z.string().optional(),
+  phone: z.union([z.string(), z.number()]).optional(),
+  account: z.string().optional(),
+  ifsc: z.string().optional(),
+});
 
-    }
-    if (data.role === "seller") {
-      addIssue(!data.phone || !data.phone || !(/^[6-9]\d{9}$/).test(data.phone + ""),
-        "phone", "A valid 10-digit phone number is required for sellers")
-      addIssue(data.about && data.about.length > 200,
-        "about", "About should be 200 characters")
-    }
-  });
+export const ZodUserSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  username: z.string().trim().min(2).max(30).regex(/^[A-Za-z0-9_-]+$/),
+  email: z.string().trim().email(),
+  phone: z.union([z.string(), z.number()]).optional(),
+  image: z.string().url().or(z.literal("")),
+  role: z.enum(["student", "seller", "admin"]),
+  status: z.enum(["active", "suspended", "deleted"]).optional(),
+  about: z.string().max(500).optional(),
+});
 
-
- 
 export const ZodProductScema = z.object({
-  title: z.string().min(1, "Name is required").max(100, "Max 100 letters allowed"),
-  description: z.string().min(1, "Description is required").max(4000, "Max 4000 letters allowed"),
-  price: z.number().min(1, "Price must be greater than 0"),
-  tags: z.array(z.string()).min(1, "At least one tag is required"),
-  thumbnail: z.string().url(),
-  fileLink: z.string().url(),
-  slug: z.string(),
-  createdOn: z.any().optional(),
-  _id: z.any().optional(),
-})
+  title: z.string().trim().min(1).max(160),
+  description: z.string().max(10000).default(""),
+  price: z.number().min(0),
+  currency: z.string().length(3).default("INR"),
+  tags: tagsSchema,
+  thumbnail: urlOrEmpty,
+  fileLink: z.string().url().optional(),
+  slug: slugSchema,
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  seller: z.string().optional(),
+  fileName: z.string().optional(),
+  fileSize: z.number().nonnegative().optional(),
+  mimeType: z.string().optional(),
+  downloadLimit: z.number().int().positive().nullable().optional(),
+  createdOn: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional(),
+  _id: z.string().optional(),
+});
 
 export const ZodBlogSchema = z.object({
-  slug: z.string(),
-  title: z.string().min(1, "Title is required").max(100, "Max 100 letters allowed"),
-  status: z.enum(["private", "free", "paid"]),
-  description: z.string().min(1, "Description is required").max(4000, "Max 4000 letters allowed"),
-  thumbnail: z.string().url(),
-  content: z.string(),
-  tags: z.array(z.string()).min(1, "At least one tag is required"),
-  category: z.array(z.string()).min(1, "At least one category is required"),
-  products: z.array(z.any()), 
-  author: z.any(),
-  publishedAt: z.any().optional(),
-  updatedAt: z.any().optional(),
-  _id: z.any().optional(),
-})
+  slug: slugSchema,
+  title: z.string().trim().min(1).max(160),
+  status: z.enum(["draft", "private", "free", "paid"]).default("draft"),
+  description: z.string().max(10000).default(""),
+  thumbnail: urlOrEmpty,
+  content: z.string().default(""),
+  tags: tagsSchema,
+  category: tagsSchema,
+  products: z.array(z.any()).default([]),
+  author: z.string().optional(),
+  course: z.string().optional(),
+  estimatedMinutes: z.number().int().nonnegative().optional(),
+  codeExamples: z.array(z.object({
+    _id: z.string().optional(),
+    title: z.string().max(160).optional(),
+    language: z.enum(["javascript", "typescript", "python", "html", "css", "json", "sql", "bash", "other"]),
+    code: z.string().max(100000),
+    starterCode: z.string().max(100000).optional(),
+    runnable: z.boolean().default(false),
+    order: z.number().int().nonnegative().default(0),
+  })).optional(),
+  seoTitle: z.string().max(160).optional(),
+  seoDescription: z.string().max(320).optional(),
+  publishedAt: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional(),
+  _id: z.string().optional(),
+});
 
 export const ZodCourseSchema = z.object({
-  slug: z.string().nonempty("Slug is required"),
-  title: z.string().nonempty("Title is required"),
-  status: z.enum(['private', 'published']),
-  price: z.number().nonnegative("Price must be a non-negative number"),
-  description: z.string().nonempty("Description is required"),
-  thumbnail: z.string().nonempty("Thumbnail is required"),
-  content: z.array(z.any()),
-  tags: z.array(z.string().nonempty("Add atleast one tag")).min(1,"Add atleast one tag"),
+  slug: slugSchema,
+  title: z.string().trim().min(1).max(160),
+  status: z.enum(["draft", "private", "published", "archived"]).default("draft"),
+  accessType: z.enum(["free", "paid"]).default("free"),
+  price: z.number().min(0).default(0),
+  currency: z.string().length(3).default("INR"),
+  description: z.string().trim().min(1).max(10000),
+  thumbnail: z.string().min(1),
+  content: z.array(z.any()).default([]),
+  tags: tagsSchema,
   author: z.string().optional(),
-  publishedAt: z.date().optional(),
-  _id: z.any().optional()
+  landingPage: z.string().optional(),
+  level: z.enum(["beginner", "intermediate", "advanced", "all-levels"]).optional(),
+  language: z.string().optional(),
+  estimatedMinutes: z.number().int().nonnegative().optional(),
+  prerequisites: z.array(z.string()).optional(),
+  publishedAt: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional(),
+  _id: z.string().optional(),
 });
