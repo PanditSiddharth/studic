@@ -88,13 +88,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white"
-            >
-             
-              <StudicLogo />
-            </Link>
+            <StudicLogo className="inline-flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-white" />
 
             <p className="mt-4 text-sm leading-7">
               Your space to learn, explore, and grow. Discover educational
