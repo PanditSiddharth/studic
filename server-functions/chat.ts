@@ -371,14 +371,24 @@ export async function sendChatMessage(input: {
   if (!mongoose.isValidObjectId(input?.chatId)) return { error: "Chat not found" };
 
   const text = String(input?.text || "").trim();
-  if (!text && !input.attachment) return { error: "Write a message or attach a file first" };
+  const rawAttachment = input?.attachment;
+  const hasAttachment = Boolean(
+    rawAttachment &&
+    typeof rawAttachment === "object" &&
+    rawAttachment.url &&
+    rawAttachment.name &&
+    rawAttachment.mimeType &&
+    rawAttachment.kind
+  );
+  if (rawAttachment && !hasAttachment) return { error: "Attachment data is incomplete. Please choose the file again." };
+  const attachment = hasAttachment ? rawAttachment : undefined;
+  if (!text && !attachment) return { error: "Write a message or attach a file first" };
   if (text.length > 4000) return { error: "Keep messages under 4000 characters" };
 
   try {
     await connectDB();
-    const media = input.attachment ? await getChatMediaConfig() : null;
-    if (input.attachment) {
-      const attachment = input.attachment;
+    const media = attachment ? await getChatMediaConfig() : null;
+    if (attachment) {
       if (!/^https:\/\/res\.cloudinary\.com\//i.test(attachment.url)) return { error: "Use a valid Cloudinary file" };
       if (!attachment.name || attachment.name.length > 240) return { error: "Invalid attachment name" };
       if (!media?.allowMedia || (attachment.kind === "image" ? !media.allowImages : !media.allowDocuments)) {
@@ -420,11 +430,11 @@ export async function sendChatMessage(input: {
       // Keep the database message valid for attachment-only sends. The UI
       // renders the attachment itself, while this fallback supports older
       // cached Mongoose models that still require text.
-      text: text || `Attachment: ${input.attachment?.name || "File"}`,
-      attachment: input.attachment ? {
-        ...input.attachment,
+      text: text || `Attachment: ${attachment?.name || "File"}`,
+      ...(attachment ? { attachment: {
+        ...attachment,
         expiresAt: media?.retentionDays ? new Date(Date.now() + media.retentionDays * 86400000) : null,
-      } : undefined,
+      } } : {}),
     });
 
     const createdAt = message.createdOn || new Date();
@@ -433,7 +443,7 @@ export async function sendChatMessage(input: {
       {
         $set: {
           lastMessage: {
-            text: text ? (text.length > 200 ? `${text.slice(0, 197)}...` : text) : `Attachment: ${input.attachment?.name || "Attachment"}`,
+            text: text ? (text.length > 200 ? `${text.slice(0, 197)}...` : text) : `Attachment: ${attachment?.name || "Attachment"}`,
             senderId: user._id,
             senderName: user.name || "Member",
             at: createdAt,

@@ -173,7 +173,11 @@ export default function ChatWorkspace() {
       if (!chat) return false;
       setSending(true);
       try {
-        const result = await sendChatMessage({ chatId: chat._id, text, attachment });
+        const result = await sendChatMessage({
+          chatId: chat._id,
+          text,
+          ...(attachment?.url && attachment.name && attachment.mimeType && attachment.kind ? { attachment } : {}),
+        });
         if (!result || "error" in result) {
           toast.error(result && "error" in result ? result.error : "Could not send your message");
           return false;
