@@ -7,13 +7,12 @@ import MarkdownPreview from "@uiw/react-markdown-preview";
 import { useTheme } from "next-themes";
 import rehypeHighlight from "rehype-highlight";
 import {
-  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, Lock, Package, Sparkles,
+  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, Lock,
 } from "lucide-react";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
 import { getBlog, type BlogAccessState, type BlogCourseSummary, type BlogResult } from "@/server-functions/blog";
-import type { IProduct } from "@/modals/product.model";
-import { cleanArticleContent, cn } from "@/modals/utils";
+import { cleanArticleContent } from "@/modals/utils";
 import "@/components/themes/codetheme.css";
 
 type Params = { slug?: string[] };
@@ -67,7 +66,7 @@ export default function BlogArticle({ params }: { params: Params }) {
       return;
     }
     setLoading(true);
-    getBlog({ slug, category, products: true })
+    getBlog({ slug, category })
       .then((result) => {
         if (cancelled) return;
         if ("error" in result) {
@@ -86,13 +85,6 @@ export default function BlogArticle({ params }: { params: Params }) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [slug, category]);
-
-  const products = useMemo(() => {
-    // Draft/archived products are already filtered out by getBlog's populate
-    // match, so only guard against malformed references here.
-    const list = (Array.isArray(blog?.products) ? blog?.products : []) as Partial<IProduct>[];
-    return list.filter((product) => Boolean(product?.slug)).slice(0, 4);
-  }, [blog?.products]);
 
   const articleContent = useMemo(
     () => cleanArticleContent(blog?.content, { title: blog?.title, thumbnail: blog?.thumbnail }),
@@ -135,7 +127,7 @@ export default function BlogArticle({ params }: { params: Params }) {
       <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-[190px_minmax(0,1fr)_230px] lg:gap-5 xl:grid-cols-[205px_minmax(0,1fr)_250px]">
         {headings.length > 0 ? (
           <aside className="hidden min-w-0 lg:block">
-            <nav aria-label="On this page" className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto border-r border-border pr-3">
+            <nav aria-label="On this page" className="hide-scrollbar sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto border-r border-border pr-3">
               <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
               <ul className="space-y-1">
                 {headings.map((heading) => (
@@ -227,65 +219,22 @@ export default function BlogArticle({ params }: { params: Params }) {
       ) : (
         <MarkdownPreview
           data-blog-article=""
+          data-color-mode={colorMode}
           source={articleContent || "_This article is still being written._"}
           rehypePlugins={[rehypeHighlight]}
           style={{
-            backgroundColor: colorMode === "dark" ? "rgba(0, 0, 0, 0.2)" : "rgba(255, 255, 255, 0.2)",
-            fontFamily: "sans-serif",
+            backgroundColor: "transparent",
+            color: "inherit",
+            fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           }}
-          className="mx-auto mt-4 w-full max-w-4xl rounded-xl p-3 sm:p-5"
+          className="mx-auto mt-4 w-full max-w-4xl rounded-xl p-3 sm:p-5 [&_*]:!border-border [&_h1]:!text-2xl sm:[&_h1]:!text-3xl [&_h1]:!leading-tight [&_h1]:!font-bold [&_h2]:!text-xl sm:[&_h2]:!text-2xl [&_h2]:!leading-snug [&_h2]:!font-semibold [&_h3]:!text-lg [&_h3]:!font-semibold [&_p]:!text-sm sm:[&_p]:!text-base [&_p]:!leading-7 [&_li]:!text-sm sm:[&_li]:!text-base [&_li]:!leading-7 [&_blockquote]:!text-sm [&_blockquote]:!leading-6 [&_blockquote]:!border-l-border [&_blockquote]:!text-muted-foreground [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_code:not(pre_code)]:!bg-muted [&_code:not(pre_code)]:!text-foreground"
         />
       )}
 
-      {products.length > 0 && (
-        <section className="mt-10 border-t pt-8">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                <Sparkles size={12} /> Resources mentioned
-              </p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">Products related to this article</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Downloads and templates that pair with what you just read.</p>
-            </div>
-            <Button asChild variant="ghost" size="sm" className="gap-1.5">
-              <Link href="/products"><Package size={14} /> All products</Link>
-            </Button>
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {products.map((product) => (
-              <Link
-                key={String(product._id || product.slug)}
-                href={`/product/${product.slug}`}
-                className="group flex flex-col overflow-hidden rounded-xl border transition-colors hover:border-primary/30 hover:bg-muted/40"
-              >
-                <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
-                  {product.thumbnail ? (
-                    <Image src={product.thumbnail} alt={product.title || ""} fill sizes="(max-width: 768px) 100vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground"><Package size={26} /></div>
-                  )}
-                  <span className={cn(
-                    "absolute left-2.5 top-2.5 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur",
-                    Number(product.price) ? "bg-background/90" : "bg-emerald-500/90 text-white"
-                  )}>
-                    {money(product.price, product.currency)}
-                  </span>
-                </div>
-                <div className="flex flex-1 flex-col p-3">
-                  <h3 className="line-clamp-2 text-sm font-medium group-hover:text-primary">{product.title}</h3>
-                  {product.description && <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{product.description}</p>}
-                  <span className="mt-auto pt-3 text-xs font-medium text-primary">View resource →</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
         </main>
 
         <aside className="hidden min-w-0 lg:block">
-          <div className="sticky top-24 max-h-[calc(100vh-7rem)] space-y-5 overflow-y-auto pl-1">
+          <div className="hide-scrollbar sticky top-24 max-h-[calc(100vh-7rem)] space-y-5 overflow-y-auto pl-1">
             {accessCourse?.slug ? (
               <section>
                 <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Related course</h2>

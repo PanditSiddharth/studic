@@ -104,12 +104,7 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
         const isAdmin = user?.role === "admin";
 
         const course = await CourseModel.findOne({ slug: options.courseSlug })
-            .populate("content", "title description thumbnail slug status")
-            .populate({
-                path: "products",
-                match: { $or: [{ status: "published" }, { status: { $exists: false } }] },
-                select: "title slug thumbnail description price currency status fileName",
-            }) as ICourse;
+            .populate("content", "title description thumbnail slug status") as ICourse;
 
         if (!course) return { error: "This course could not be found" };
         if (!isAdmin && !["published", "unlisted"].includes(String(course.status)))
@@ -121,11 +116,7 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
                 .filter(Boolean)
         );
 
-        const lesson = await BlogModel.findOne({ slug: options.lessonSlug }).populate({
-            path: "products",
-            match: { $or: [{ status: "published" }, { status: { $exists: false } }] },
-            select: "title slug thumbnail description price currency tags status",
-        });
+        const lesson = await BlogModel.findOne({ slug: options.lessonSlug });
 
         if (!lesson || !lessonIds.has(String(lesson._id)))
             return { error: "This lesson is not part of the course" };

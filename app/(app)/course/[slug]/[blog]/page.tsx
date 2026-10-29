@@ -7,8 +7,8 @@ import MarkdownPreview from "@uiw/react-markdown-preview";
 import { useTheme } from "next-themes";
 import { toast } from "react-toastify";
 import {
-  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, Download, Loader2, Lock,
-  Package, ShieldCheck, Sparkles,
+  ArrowLeft, ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Loader2, Lock,
+  ShieldCheck, Sparkles,
 } from "lucide-react";
 import rehypeHighlight from "rehype-highlight";
 import Loader from "@/components/loader";
@@ -24,7 +24,6 @@ import "@/components/themes/codetheme.css";
 
 type TocItem = { id: string; title: string; level: number };
 type Suggestion = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string };
-type RelatedProduct = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string; price?: number; currency?: string; status?: string };
 type Suggestions = { course?: Suggestion; blogs: Suggestion[] };
 type Access = {
   signedIn: boolean;
@@ -138,12 +137,15 @@ export default function Blog(props: any) {
   }, [blog?.slug, blog?.tags, blog?.category, blog?.title, course?.slug]);
 
   const headings = useMemo(() => extractHeadings(blog?.content ?? ""), [blog?.content]);
-  const relatedProducts = (Array.isArray(blog?.products) ? blog.products : []) as RelatedProduct[];
-  // Draft products are filtered by getBlog's populate match; keep anything with a slug.
-  const visibleProducts = relatedProducts.filter((product) => Boolean(product?.slug)).slice(0, 4);
-  const courseProducts = (Array.isArray(course?.products) ? course.products : [])
-    .filter((product: any) => product && typeof product === "object" && product.slug)
-    .slice(0, 8) as any[];
+  const courseLessons = useMemo(
+    () => (Array.isArray(course?.content) ? course.content : []) as LessonSummary[],
+    [course?.content]
+  );
+  const currentLessonIndex = courseLessons.findIndex(
+    (item) => item.slug === lesson?.slug || String(item._id) === String(lesson?._id)
+  );
+  const previousLesson = currentLessonIndex > 0 ? courseLessons[currentLessonIndex - 1] : undefined;
+  const nextLesson = currentLessonIndex >= 0 ? courseLessons[currentLessonIndex + 1] : undefined;
 
   useEffect(() => {
     if (loading) return;
@@ -288,7 +290,7 @@ export default function Blog(props: any) {
     <div data-color-mode={currentTheme} className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-5 px-3 py-5 sm:px-5 lg:grid-cols-[190px_minmax(0,1fr)_230px] lg:gap-5 xl:grid-cols-[205px_minmax(0,1fr)_250px]">
       {headings.length > 0 && (
         <aside className="hidden lg:block min-w-0">
-          <nav aria-label="On this page" className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto border-r border-border pr-3">
+          <nav aria-label="On this page" className="hide-scrollbar sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto border-r border-border pr-3">
             <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
             <ul className="space-y-1">
               {headings.map((heading) => (
@@ -317,87 +319,36 @@ export default function Blog(props: any) {
           source={cleanArticleContent(blog.content)}
         />
 
-        {visibleProducts.length > 0 && (
-          <section className="mx-auto mt-8 w-full max-w-4xl border-t border-border pt-6">
-            <div className="mb-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Keep learning</p>
-              <h2 className="mt-1 text-xl font-semibold">Related products</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Useful resources selected for this article.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {visibleProducts.map((product) => (
-                <Link
-                  key={product._id || product.slug}
-                  href={`/product/${product.slug}`}
-                  className="group overflow-hidden rounded-xl border border-border transition-colors hover:bg-muted/50"
-                >
-                  {product.thumbnail ? (
-                    <img src={product.thumbnail} alt="" className="aspect-[1.6] w-full object-cover" />
-                  ) : (
-                    <div className="flex aspect-[1.6] items-center justify-center bg-muted text-muted-foreground">
-                      <span className="text-sm">Digital resource</span>
-                    </div>
-                  )}
-                  <div className="p-3">
-                    <h3 className="line-clamp-2 text-sm font-medium group-hover:underline">{product.title}</h3>
-                    {typeof product.price === "number" && (
-                      <p className="mt-2 text-sm font-semibold">
-                        {product.price === 0 ? "Free" : new Intl.NumberFormat("en-IN", {
-                          style: "currency",
-                          currency: product.currency || "INR",
-                          maximumFractionDigits: 0,
-                        }).format(product.price)}
-                      </p>
-                    )}
-                    {product.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{product.description}</p>}
-                  </div>
+        {(previousLesson || nextLesson) && (
+          <nav aria-label="Course lesson navigation" className="mx-auto mt-8 flex w-full max-w-4xl items-stretch justify-between gap-3 border-t border-border pt-6">
+            {previousLesson?.slug ? (
+              <Button asChild variant="outline" className="h-auto min-w-0 flex-1 justify-start px-3 py-3 text-left sm:px-4">
+                <Link href={`/course/${courseSlug}/${previousLesson.slug}`}>
+                  <ArrowLeft />
+                  <span className="min-w-0">
+                    <span className="block text-[11px] text-muted-foreground">Previous lesson</span>
+                    <span className="block truncate text-sm">{previousLesson.title}</span>
+                  </span>
                 </Link>
-              ))}
-            </div>
-          </section>
+              </Button>
+            ) : <div className="flex-1" />}
+            {nextLesson?.slug ? (
+              <Button asChild variant="outline" className="h-auto min-w-0 flex-1 justify-end px-3 py-3 text-right sm:px-4">
+                <Link href={`/course/${courseSlug}/${nextLesson.slug}`}>
+                  <span className="min-w-0">
+                    <span className="block text-[11px] text-muted-foreground">Next lesson</span>
+                    <span className="block truncate text-sm">{nextLesson.title}</span>
+                  </span>
+                  <ArrowRight />
+                </Link>
+              </Button>
+            ) : <div className="flex-1" />}
+          </nav>
         )}
       </main>
 
       <aside className="hidden lg:block min-w-0">
-        <div className="sticky top-24 max-h-[calc(100vh-7rem)] space-y-5 overflow-y-auto pl-1">
-          {courseProducts.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Course downloads</h2>
-              <ul className="space-y-2">
-                {courseProducts.map((product) => {
-                  const included = Boolean(access?.owned);
-                  const isFree = !Number(product.price);
-                  return (
-                    <li key={String(product._id || product.slug)} className="rounded-lg border p-2.5">
-                      <Link href={`/product/${product.slug}`} className="group flex gap-2.5">
-                        {product.thumbnail ? (
-                          <img src={product.thumbnail} alt="" className="h-12 w-14 shrink-0 rounded-md object-cover" />
-                        ) : (
-                          <span className="flex h-12 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"><Package size={16} /></span>
-                        )}
-                        <span className="min-w-0">
-                          <span className="block text-[13px] font-medium leading-5 group-hover:underline">{product.title}</span>
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                            {isFree ? "Free" : included ? "Included with course" : formatPrice(product.price, product.currency)}
-                          </span>
-                        </span>
-                      </Link>
-                      {included && product._id ? (
-                        <a href={`/api/download/${product._id}`} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted">
-                          <Download size={12} /> Download
-                        </a>
-                      ) : (
-                        <Link href={`/product/${product.slug}`} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted">
-                          {isFree ? "Get free" : "Buy separately"}
-                        </Link>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-
+        <div className="hide-scrollbar sticky top-24 max-h-[calc(100vh-7rem)] space-y-5 overflow-y-auto pl-1">
           {suggestions.course && (
             <section>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Related course</h2>
