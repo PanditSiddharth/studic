@@ -164,3 +164,51 @@
 [data-blog-article] pre .hljs-bullet {
   color: #c4a7ff !important;
 }
+
+
+/* Light-theme code blocks: use a light surface with dark, readable syntax colors. */
+[data-color-mode="light"] [data-blog-article] pre,
+[data-color-mode="light"] [data-blog-article] pre code,
+[data-color-mode="light"] [data-blog-article] pre code.hljs {
+  background-color: #f6f8fa !important;
+  color: #24292f !important;
+}
+[data-color-mode="light"] [data-blog-article] pre .hljs,
+[data-color-mode="light"] [data-blog-article] pre .hljs-subst,
+[data-color-mode="light"] [data-blog-article] pre .hljs-variable,
+[data-color-mode="light"] [data-blog-article] pre .hljs-params,
+[data-color-mode="light"] [data-blog-article] pre .hljs-property,
+[data-color-mode="light"] [data-blog-article] pre .hljs-punctuation,
+[data-color-mode="light"] [data-blog-article] pre .hljs-operator {
+  color: #24292f !important;
+}
+[data-color-mode="light"] [data-blog-article] pre .hljs-keyword,
+[data-color-mode="light"] [data-blog-article] pre .hljs-selector-tag,
+[data-color-mode="light"] [data-blog-article] pre .hljs-literal {
+  color: #cf222e !important;
+}
+[data-color-mode="light"] [data-blog-article] pre .hljs-title,
+[data-color-mode="light"] [data-blog-article] pre .hljs-title.function_,
+[data-color-mode="light"] [data-blog-article] pre .hljs-function {
+  color: #8250df !important;
+}
+[data-color-mode="light"] [data-blog-article] pre .hljs-string,
+[data-color-mode="light"] [data-blog-article] pre .hljs-regexp,
+[data-color-mode="light"] [data-blog-article] pre .hljs-template-tag {
+  color: #116329 !important;
+}
+[data-color-mode="light"] [data-blog-article] pre .hljs-number,
+[data-color-mode="light"] [data-blog-article] pre .hljs-built_in,
+[data-color-mode="light"] [data-blog-article] pre .hljs-type,
+[data-color-mode="light"] [data-blog-article] pre .hljs-attr {
+  color: #0550ae !important;
+}
+[data-color-mode="light"] [data-blog-article] pre .hljs-comment,
+[data-color-mode="light"] [data-blog-article] pre .hljs-quote {
+  color: #6e7781 !important;
+}
+[data-color-mode="light"] [data-blog-article] pre .hljs-attribute,
+[data-color-mode="light"] [data-blog-article] pre .hljs-symbol,
+[data-color-mode="light"] [data-blog-article] pre .hljs-bullet {
+  color: #953800 !important;
+}
