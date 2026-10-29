@@ -159,18 +159,23 @@ ChatSchema.index({ participants: 1, lastMessageAt: -1 });
 ChatSchema.index({ kind: 1, lastMessageAt: -1 });
 ChatSchema.index({ systemKey: 1 }, { unique: true, sparse: true });
 
+const ChatAttachmentSchema = new Schema(
+  {
+    url: { type: String, required: true },
+    name: { type: String, required: true, maxlength: 240 },
+    mimeType: { type: String, required: true, maxlength: 120 },
+    kind: { type: String, enum: ["image", "document"], required: true },
+    expiresAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const MessageSchema = new Schema<IMessage>(
   {
     chat: { type: Schema.Types.ObjectId, ref: "Chat", required: true, index: true },
     sender: { type: Schema.Types.ObjectId, ref: "User", required: true },
     text: { type: String, default: "", trim: true, maxlength: 4000 },
-    attachment: {
-      url: { type: String, required: true },
-      name: { type: String, required: true, maxlength: 240 },
-      mimeType: { type: String, required: true, maxlength: 120 },
-      kind: { type: String, enum: ["image", "document"], required: true },
-      expiresAt: { type: Date, default: null },
-    },
+    attachment: { type: ChatAttachmentSchema, required: false, default: undefined },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
 );
@@ -210,6 +215,14 @@ ChatReadSchema.index({ chat: 1, user: 1 }, { unique: true });
 
 export const ChatModel: Model<IChat> =
   (mongoose.models.Chat as Model<IChat>) || mongoose.model<IChat>("Chat", ChatSchema);
+
+const cachedMessageModel = mongoose.models.Message as Model<IMessage> | undefined;
+const cachedAttachmentPath = cachedMessageModel?.schema.path("attachment") as any;
+const cachedAttachmentIsOptional = cachedAttachmentPath && cachedAttachmentPath.isRequired === false;
+
+if (cachedMessageModel && !cachedAttachmentIsOptional) {
+  delete mongoose.models.Message;
+}
 
 export const MessageModel: Model<IMessage> =
   (mongoose.models.Message as Model<IMessage>) || mongoose.model<IMessage>("Message", MessageSchema);

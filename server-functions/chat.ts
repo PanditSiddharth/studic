@@ -466,6 +466,10 @@ export async function sendChatMessage(input: {
     return JSON.parse(JSON.stringify({ message: toMessage(populated) }));
   } catch (error: any) {
     console.error("Error sending message", error);
+    if (error?.name === "ValidationError") {
+      const fields = Object.keys(error.errors || {}).join(", ");
+      return { error: fields ? `Message data is invalid: ${fields}. Please reload the chat and try again.` : "Message data is invalid. Please reload the chat and try again." };
+    }
     return { error: error?.message || "Could not send your message" };
   }
 }
