@@ -309,7 +309,7 @@ export default function Blog(props: any) {
           style={{
             backgroundColor: "transparent",
             color: "inherit",
-            fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif',
+            fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           }}
           rehypePlugins={[rehypeHighlight]}
           className="mx-auto w-full max-w-4xl rounded-xl p-3 sm:p-5 [&_*]:!border-border [&_h1]:!text-2xl sm:[&_h1]:!text-3xl [&_h1]:!leading-tight [&_h1]:!font-bold [&_h2]:!text-xl sm:[&_h2]:!text-2xl [&_h2]:!leading-snug [&_h2]:!font-semibold [&_h3]:!text-lg [&_h3]:!font-semibold [&_p]:!text-sm sm:[&_p]:!text-base [&_p]:!leading-7 [&_li]:!text-sm sm:[&_li]:!text-base [&_li]:!leading-7 [&_blockquote]:!text-sm [&_blockquote]:!leading-6 [&_blockquote]:!border-l-border [&_blockquote]:!text-muted-foreground [&_pre]:!bg-[#171a21] [&_pre]:!text-gray-100 [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_code:not(pre_code)]:!bg-muted [&_code:not(pre_code)]:!text-foreground"
