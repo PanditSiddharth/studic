@@ -112,3 +112,29 @@ export async function removeAdminAccess(email: string) {
     return { error: error?.message || "Could not update this administrator" };
   }
 }
+
+export async function getAdminUsers() {
+    const session = await getSessionUser();
+    if (!session || session.role !== "admin") return { error: "Administrator access required" as const };
+    try {
+      await connectDB();
+      const users = await UserModel.find().sort({ createdOn: -1 }).limit(200).select("name email role status createdOn lastLoginAt");
+      return { users: JSON.parse(JSON.stringify(users)) };
+    } catch (error: any) {
+      console.error("Error loading users", error);
+      return { error: error?.message || "Could not load users" };
+    }
+  }
+
+export async function updateAdminUserStatus(id: string, status: "active" | "suspended") {
+    const session = await getSessionUser();
+    if (!session || session.role !== "admin") return { error: "Administrator access required" as const };
+    try {
+      await connectDB();
+      const updated = await UserModel.findByIdAndUpdate(id, { status }, { new: true }).select("_id status").lean();
+      return updated ? { success: true } : { error: "User not found" };
+    } catch (error: any) {
+      console.error("Error updating user status", error);
+      return { error: error?.message || "Could not update user status" };
+  }
+}

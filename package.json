@@ -55,6 +55,7 @@
     "sass": "^1.83.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "telegraf": "^4.16.3",
     "zod": "^3.24.1",
     "zustand": "^5.0.2"
   },
@@ -71,7 +72,7 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   },
-"engines": {
-  "node": ">=24.0.0 <25.0.0"
-}
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  }
 }

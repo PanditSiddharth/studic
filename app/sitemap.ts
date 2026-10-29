@@ -6,7 +6,7 @@ import { ProductModel } from "@/modals/product.model";
 import { absoluteUrl } from "@/lib/seo";
 
 const staticPages = [
-  "/", "/courses", "/products", "/blogs", "/about", "/contact", "/privacy", "/tnc",
+  "/", "/courses", "/products", "/blogs", "/about", "/contact", "/privacy", "/tnc", "/refund",
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -50,4 +50,3 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 }
-

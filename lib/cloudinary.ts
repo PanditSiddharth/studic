@@ -57,4 +57,11 @@ export async function deleteCloudinaryAssets(urls: Array<string | undefined>) {
     });
     if (!response.ok) console.error("Cloudinary asset cleanup failed", { publicId, status: response.status });
   }
+
+}
+
+export async function deleteExpiredCloudinaryAssets(
+  assets: Array<{ url: string; resourceType?: "image" | "raw" }>
+) {
+  await deleteCloudinaryAssets(assets.map((asset) => asset.url));
 }

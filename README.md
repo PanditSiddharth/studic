@@ -186,6 +186,8 @@ NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
+# Vercel Cron protection for automatic chat media cleanup
+CRON_SECRET=long_random_cron_secret
 
 # Site and SEO
 DOMAIN=https://www.example.com

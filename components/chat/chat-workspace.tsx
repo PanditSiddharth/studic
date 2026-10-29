@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -9,9 +9,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/modals/utils";
-import type { ChatMessage, ChatSummary } from "@/modals/chat.model";
+import type { ChatAttachment, ChatMessage, ChatSummary } from "@/modals/chat.model";
 import {
-  deleteChatMessage, getChat, getChats, getChatMessages, sendChatMessage,
+  deleteChatMessage, getChat, getChats, getChatMediaSettings, getChatMessages, sendChatMessage,
 } from "@/server-functions/chat";
 import ChatSidebar from "./chat-sidebar";
 import ChatWindow from "./chat-window";
@@ -20,6 +20,7 @@ import NewChatDialog from "./new-chat-dialog";
 
 export default function ChatWorkspace() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status } = useSession();
 
   const [chats, setChats] = useState<ChatSummary[]>([]);
@@ -34,6 +35,7 @@ export default function ChatWorkspace() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [sending, setSending] = useState(false);
+  const [mediaSettings, setMediaSettings] = useState({ allowMedia: false, allowImages: false, allowDocuments: false, allowVoiceCalls: false });
 
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -77,6 +79,13 @@ export default function ChatWorkspace() {
     if (status !== "authenticated") return;
     void loadChats();
   }, [loadChats, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    void getChatMediaSettings().then((result) => {
+      if (result && !("error" in result)) setMediaSettings(result.settings);
+    });
+  }, [status]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -124,6 +133,13 @@ export default function ChatWorkspace() {
   }, []);
 
   useEffect(() => {
+    const requestedChat = searchParams.get("chat");
+    if (status === "authenticated" && requestedChat && !loadingChats) {
+      void openChat(requestedChat);
+    }
+  }, [loadingChats, openChat, searchParams, status]);
+
+  useEffect(() => {
     if (!selectedId) return;
     let cancelled = false;
 
@@ -153,11 +169,11 @@ export default function ChatWorkspace() {
   }, [loadChats, selectedId]);
 
   const handleSend = useCallback(
-    async (text: string) => {
+    async (text: string, attachment?: ChatAttachment) => {
       if (!chat) return false;
       setSending(true);
       try {
-        const result = await sendChatMessage({ chatId: chat._id, text });
+        const result = await sendChatMessage({ chatId: chat._id, text, attachment });
         if (!result || "error" in result) {
           toast.error(result && "error" in result ? result.error : "Could not send your message");
           return false;
@@ -262,6 +278,7 @@ export default function ChatWorkspace() {
           messages={messages}
           loading={loadingChat}
           sending={sending}
+          mediaSettings={mediaSettings}
           readOnly={readOnly}
           currentUserId={currentUserId}
           onSend={handleSend}

@@ -29,22 +29,22 @@ export default async function AdminHomePage() {
   ];
 
   return (
-    <main className="min-h-screen space-y-8 p-5 sm:p-8">
+    <main className="min-h-screen space-y-8 p-4 sm:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-primary">STUDIC CONTROL CENTER</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Studic control center</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Dashboard</h1>
           <p className="mt-2 text-sm text-muted-foreground">A live overview of your learning platform.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-muted" href="/admin/add-course"><GraduationCap size={16}/> New course</Link>
-          <Link className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90" href="/admin/add-blog"><FileText size={16}/> New article</Link>
+          <Link className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-2.5 text-sm font-medium shadow-sm hover:border-primary/40 hover:bg-muted" href="/admin/add-course"><GraduationCap size={16}/> New course</Link>
+          <Link className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/20 hover:opacity-90" href="/admin/add-blog"><FileText size={16}/> New article</Link>
         </div>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
-          <Link key={stat.label} href={stat.href} className="group rounded-2xl border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-muted/30">
+          <Link key={stat.label} href={stat.href} className="group rounded-2xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-muted-foreground">{stat.label}</span>
               <stat.icon size={18} className="text-muted-foreground transition-colors group-hover:text-primary" />

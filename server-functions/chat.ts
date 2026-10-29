@@ -6,6 +6,7 @@ import {
   ChatModel,
   ChatReadModel,
   MessageModel,
+  VoiceCallModel,
   type ChatDirectoryUser,
   type ChatMessage,
   type ChatSummary,
@@ -13,6 +14,8 @@ import {
 } from "@/modals/chat.model";
 import { UserModel } from "@/modals/user.model";
 import { getSessionUser } from "./user";
+import { ChatSettingsModel } from "@/modals/chat-settings.model";
+import { deleteExpiredCloudinaryAssets } from "@/lib/cloudinary";
 
 const idOf = (value: any) => String(value?._id ?? value ?? "");
 const isAdmin = (user: any) => user?.role === "admin";
@@ -20,6 +23,54 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$
 const COMMUNITY_CHAT_KEY = "all-site-users";
 const COMMUNITY_CHAT_NAME = "Studic Community";
 const RESTRICTED_WORD_MUTE_SECONDS = 10 * 60;
+const MAX_VOICE_PARTICIPANTS = 5;
+const VOICE_LEASE_MS = 15_000;
+
+const defaultChatMediaSettings = {
+  allowMedia: false,
+  allowImages: false,
+  allowDocuments: false,
+  allowVoiceCalls: false,
+  retentionDays: 30,
+};
+
+async function getChatMediaConfig() {
+  const settings = await ChatSettingsModel.findOne({ key: "default" }).lean();
+  return settings ? {
+    allowMedia: Boolean(settings.allowMedia),
+    allowImages: Boolean(settings.allowImages),
+    allowDocuments: Boolean(settings.allowDocuments),
+    allowVoiceCalls: Boolean(settings.allowVoiceCalls),
+    retentionDays: settings.retentionDays == null ? null : Number(settings.retentionDays),
+  } : defaultChatMediaSettings;
+}
+
+export async function getChatMediaSettings() {
+  const user = await getSessionUser();
+  if (!user?._id) return { error: "Sign in to open chats" };
+  try {
+    await connectDB();
+    return { settings: await getChatMediaConfig() };
+  } catch (error: any) {
+    console.error("Error loading chat media settings", error);
+    return { error: error?.message || "Could not load chat settings" };
+  }
+}
+
+export async function cleanupExpiredChatMedia() {
+    await connectDB();
+    const expired = await MessageModel.find({
+      "attachment.url": { $exists: true },
+      "attachment.expiresAt": { $ne: null, $lte: new Date() },
+    }).select("attachment.url").lean();
+    if (!expired.length) return { deleted: 0 };
+    await deleteExpiredCloudinaryAssets(expired.map((message: any) => ({ url: String(message.attachment.url) })));
+    const result = await MessageModel.updateMany(
+      { _id: { $in: expired.map((message: any) => message._id) } },
+      { $unset: { attachment: 1 } }
+    );
+    return { deleted: result.modifiedCount || 0 };
+}
 
 async function ensureCommunityChat(userId: string) {
   const users = await UserModel.find({ status: { $ne: "deleted" } }).select("_id").lean();
@@ -79,6 +130,13 @@ const toMessage = (message: any): ChatMessage => ({
   text: String(message?.text || ""),
   sender: toChatUser(message?.sender),
   createdAt: message?.createdOn || message?.createdAt || new Date().toISOString(),
+  attachment: message?.attachment ? {
+    url: String(message.attachment.url),
+    name: String(message.attachment.name),
+    mimeType: String(message.attachment.mimeType),
+    kind: message.attachment.kind,
+    expiresAt: message.attachment.expiresAt || null,
+  } : undefined,
 });
 
 const toChatSummary = (
@@ -303,17 +361,32 @@ export async function getChatMessages(input: { chatId: string; after?: string })
   }
 }
 
-export async function sendChatMessage(input: { chatId: string; text: string }) {
+export async function sendChatMessage(input: {
+  chatId: string;
+  text: string;
+  attachment?: { url: string; name: string; mimeType: string; kind: "image" | "document" };
+}) {
   const user = await getSessionUser();
   if (!user?._id) return { error: "Sign in to send messages", requiresAuth: true };
   if (!mongoose.isValidObjectId(input?.chatId)) return { error: "Chat not found" };
 
   const text = String(input?.text || "").trim();
-  if (!text) return { error: "Write a message first" };
+  if (!text && !input.attachment) return { error: "Write a message or attach a file first" };
   if (text.length > 4000) return { error: "Keep messages under 4000 characters" };
 
   try {
     await connectDB();
+    const media = input.attachment ? await getChatMediaConfig() : null;
+    if (input.attachment) {
+      const attachment = input.attachment;
+      if (!/^https:\/\/res\.cloudinary\.com\//i.test(attachment.url)) return { error: "Use a valid Cloudinary file" };
+      if (!attachment.name || attachment.name.length > 240) return { error: "Invalid attachment name" };
+      if (!media?.allowMedia || (attachment.kind === "image" ? !media.allowImages : !media.allowDocuments)) {
+        return { error: "File sharing is disabled by the site administrator" };
+      }
+      if (attachment.kind === "image" && !attachment.mimeType.startsWith("image/")) return { error: "Invalid image type" };
+      if (attachment.kind === "document" && attachment.mimeType.startsWith("image/")) return { error: "Invalid document type" };
+    }
     const chat = await ChatModel.findById(input.chatId)
       .select("kind participants lastMessageAt slowModeSeconds restrictedWords mutedUsers admins createdBy");
     if (!chat) return { error: "Chat not found" };
@@ -344,7 +417,14 @@ export async function sendChatMessage(input: { chatId: string; text: string }) {
     const message = await MessageModel.create({
       chat: chat._id,
       sender: user._id,
-      text,
+      // Keep the database message valid for attachment-only sends. The UI
+      // renders the attachment itself, while this fallback supports older
+      // cached Mongoose models that still require text.
+      text: text || `Attachment: ${input.attachment?.name || "File"}`,
+      attachment: input.attachment ? {
+        ...input.attachment,
+        expiresAt: media?.retentionDays ? new Date(Date.now() + media.retentionDays * 86400000) : null,
+      } : undefined,
     });
 
     const createdAt = message.createdOn || new Date();
@@ -353,7 +433,7 @@ export async function sendChatMessage(input: { chatId: string; text: string }) {
       {
         $set: {
           lastMessage: {
-            text: text.length > 200 ? `${text.slice(0, 197)}...` : text,
+            text: text ? (text.length > 200 ? `${text.slice(0, 197)}...` : text) : `Attachment: ${input.attachment?.name || "Attachment"}`,
             senderId: user._id,
             senderName: user.name || "Member",
             at: createdAt,
@@ -465,17 +545,101 @@ export async function deleteChatMessage(messageId: string) {
   if (!user?._id || !mongoose.isValidObjectId(messageId)) return { error: "Invalid message" };
   try {
     await connectDB();
-    const message = await MessageModel.findById(messageId).select("chat");
+    const message = await MessageModel.findById(messageId).select("chat sender");
     if (!message) return { error: "Message not found" };
-    const chat = await ChatModel.findById(message.chat).select("kind createdBy admins");
-    if (!chat || chat.kind !== "group") return { error: "Group not found" };
-    if (!canManageChat(chat, user)) return { error: "Only group admins can delete messages" };
+    const chat = await ChatModel.findById(message.chat).select("kind createdBy admins participants");
+    if (!chat) return { error: "Chat not found" };
+    const ownMessage = idOf(message.sender) === String(user._id);
+    if (!ownMessage && !canManageChat(chat, user)) return { error: "You cannot delete this message" };
     await MessageModel.deleteOne({ _id: message._id });
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting chat message", error);
     return { error: error?.message || "Could not delete message" };
   }
+}
+
+const voiceParticipant = (entry: any) => ({
+  userId: idOf(entry.user),
+  joinedAt: entry.joinedAt,
+  lastSeenAt: entry.lastSeenAt,
+});
+
+export async function joinVoiceCall(chatId: string) {
+  const user = await getSessionUser();
+  if (!user?._id) return { error: "Sign in to join a voice call", requiresAuth: true };
+  if (!mongoose.isValidObjectId(chatId)) return { error: "Chat not found" };
+  try {
+    await connectDB();
+    const config = await getChatMediaConfig();
+    if (!config.allowVoiceCalls) return { error: "Voice calls are disabled by the administrator" };
+    const chat = await ChatModel.findById(chatId).select("participants");
+    if (!chat || !isParticipant(chat, String(user._id))) return { error: "Only chat members can join this call" };
+    const now = new Date();
+    const stale = new Date(Date.now() - VOICE_LEASE_MS);
+    await VoiceCallModel.updateOne({ chat: chat._id }, { $pull: { participants: { lastSeenAt: { $lt: stale } } } });
+    const current = await VoiceCallModel.findOne({ chat: chat._id });
+    const existing = current?.participants?.find((entry: any) => idOf(entry.user) === String(user._id));
+    if (existing) {
+      await VoiceCallModel.updateOne({ _id: current._id, "participants.user": user._id }, { $set: { "participants.$.lastSeenAt": now } });
+    } else {
+      const activeCount = (current?.participants || []).filter((entry: any) => new Date(entry.lastSeenAt).getTime() >= stale.getTime()).length;
+      if (activeCount >= MAX_VOICE_PARTICIPANTS) {
+        return { waiting: true, activeCount, limit: MAX_VOICE_PARTICIPANTS };
+      }
+      await VoiceCallModel.findOneAndUpdate(
+        { chat: chat._id },
+        { $setOnInsert: { chat: chat._id }, $push: { participants: { user: user._id, joinedAt: now, lastSeenAt: now } } },
+        { upsert: true, new: true }
+      );
+    }
+    const fresh: any = await VoiceCallModel.findOne({ chat: chat._id }).lean();
+    return { joined: true, participants: (fresh?.participants || []).map(voiceParticipant), limit: MAX_VOICE_PARTICIPANTS };
+  } catch (error: any) {
+    console.error("Error joining voice call", error);
+    return { error: error?.message || "Could not join voice call" };
+  }
+}
+
+export async function leaveVoiceCall(chatId: string) {
+  const user = await getSessionUser();
+  if (!user?._id || !mongoose.isValidObjectId(chatId)) return { error: "Invalid voice call" };
+  await connectDB();
+  await VoiceCallModel.updateOne({ chat: chatId }, { $pull: { participants: { user: user._id } } });
+  return { success: true };
+}
+
+export async function heartbeatVoiceCall(chatId: string) {
+  const user = await getSessionUser();
+  if (!user?._id || !mongoose.isValidObjectId(chatId)) return { error: "Invalid voice call" };
+  await connectDB();
+  const call: any = await VoiceCallModel.findOneAndUpdate(
+    { chat: chatId, "participants.user": user._id },
+    { $set: { "participants.$.lastSeenAt": new Date() } },
+    { new: true }
+  ).lean();
+  return { participants: (call?.participants || []).map(voiceParticipant), limit: MAX_VOICE_PARTICIPANTS };
+}
+
+export async function exchangeVoiceSignal(input: { chatId: string; to: string; type: "offer" | "answer" | "candidate"; payload: Record<string, unknown> }) {
+  const user = await getSessionUser();
+  if (!user?._id || !mongoose.isValidObjectId(input?.chatId) || !mongoose.isValidObjectId(input?.to)) return { error: "Invalid voice signal" };
+  await connectDB();
+  const call: any = await VoiceCallModel.findOne({ chat: input.chatId, "participants.user": { $all: [user._id, input.to] } });
+  if (!call) return { error: "Both users must be in the voice call" };
+  await VoiceCallModel.updateOne({ _id: call._id }, { $push: { signals: { from: user._id, to: input.to, type: input.type, payload: input.payload, createdAt: new Date() } } });
+  return { success: true };
+}
+
+export async function getVoiceSignals(chatId: string) {
+  const user = await getSessionUser();
+  if (!user?._id || !mongoose.isValidObjectId(chatId)) return { error: "Invalid voice call" };
+  await connectDB();
+  const call: any = await VoiceCallModel.findOne({ chat: chatId, "participants.user": user._id }).lean();
+  if (!call) return { signals: [], participants: [], limit: MAX_VOICE_PARTICIPANTS };
+  const signals = (call.signals || []).filter((signal: any) => idOf(signal.to) === String(user._id));
+  if (signals.length) await VoiceCallModel.updateOne({ _id: call._id }, { $pull: { signals: { to: user._id } } });
+  return { signals, participants: (call.participants || []).map(voiceParticipant), limit: MAX_VOICE_PARTICIPANTS };
 }
 
 export async function startDirectChat(userId: string) {
@@ -510,6 +674,24 @@ export async function startDirectChat(userId: string) {
   } catch (error: any) {
     console.error("Error starting direct chat", error);
     return { error: error?.message || "Could not start this chat" };
+  }
+}
+
+export async function startSupportChat() {
+    const user = await getSessionUser();
+    if (!user?._id) return { error: "Sign in to start a support chat", requiresAuth: true };
+    try {
+      await connectDB();
+      const target = await UserModel.findOne({
+        role: "admin",
+        status: { $ne: "deleted" },
+        _id: { $ne: user._id },
+      }).sort({ createdOn: 1 }).select("_id").lean();
+      if (!target) return { error: "Support chat is temporarily unavailable" };
+      return startDirectChat(String(target._id));
+    } catch (error: any) {
+      console.error("Error starting support chat", error);
+      return { error: error?.message || "Could not start support chat" };
   }
 }
 

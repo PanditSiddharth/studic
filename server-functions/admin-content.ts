@@ -77,18 +77,22 @@ export async function deleteAdminContent(kind: ContentKind, ids: string | string
   return { success: true, deletedCount: result.deletedCount || 0 };
 }
 
-export async function updateAdminVisibility(kind: "courses" | "blogs", id: string, status: string) {
+export async function updateAdminVisibility(kind: "courses" | "blogs" | "products", id: string, status: string) {
   if (!(await requireAdmin())) return { error: "Unauthorized" as const };
   if (!mongoose.isValidObjectId(id)) return { error: "Invalid record id." };
   const allowed = kind === "courses"
     ? ["draft", "private", "published", "archived", "unlisted"]
-    : ["draft", "private", "public", "unlisted", "free", "paid"];
+    : kind === "blogs"
+      ? ["draft", "private", "public", "unlisted", "free", "paid"]
+      : ["draft", "published", "archived"];
   if (!allowed.includes(status)) return { error: "Invalid status." };
   await connectDB();
   const update = { $set: { status, ...(status === "published" || status === "public" ? { publishedAt: new Date() } : {}) } };
   const updated = kind === "courses"
     ? await CourseModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean()
-    : await BlogModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean();
+    : kind === "blogs"
+      ? await BlogModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean()
+      : await ProductModel.findByIdAndUpdate(id, update, { new: true }).select("_id status").lean();
   if (!updated) return { error: "Record not found." };
   return { success: true, item: JSON.parse(JSON.stringify(updated)) };
 }

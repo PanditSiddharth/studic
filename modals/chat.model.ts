@@ -49,6 +49,16 @@ export interface ChatMessage {
   text: string;
   sender: ChatUser;
   createdAt: string | Date;
+  attachment?: ChatAttachment;
+}
+
+export type ChatAttachmentKind = "image" | "document";
+export interface ChatAttachment {
+  url: string;
+  name: string;
+  mimeType: string;
+  kind: ChatAttachmentKind;
+  expiresAt?: string | Date | null;
 }
 
 export interface ChatDirectoryUser extends ChatUser {
@@ -87,6 +97,7 @@ export interface IMessage {
   chat: mongoose.Types.ObjectId | string;
   sender: mongoose.Types.ObjectId | string;
   text: string;
+  attachment?: ChatAttachment;
   createdOn?: Date;
   updatedAt?: Date;
 }
@@ -96,6 +107,20 @@ export interface IChatRead {
   chat: mongoose.Types.ObjectId | string;
   user: mongoose.Types.ObjectId | string;
   lastReadAt: Date;
+}
+
+export interface IVoiceParticipant {
+  user: mongoose.Types.ObjectId | string;
+  joinedAt: Date;
+  lastSeenAt: Date;
+}
+
+export interface IVoiceSignal {
+  from: mongoose.Types.ObjectId | string;
+  to: mongoose.Types.ObjectId | string;
+  type: "offer" | "answer" | "candidate";
+  payload: Record<string, unknown>;
+  createdAt: Date;
 }
 
 const LastMessageSchema = new Schema(
@@ -138,7 +163,14 @@ const MessageSchema = new Schema<IMessage>(
   {
     chat: { type: Schema.Types.ObjectId, ref: "Chat", required: true, index: true },
     sender: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    text: { type: String, required: true, trim: true, maxlength: 4000 },
+    text: { type: String, default: "", trim: true, maxlength: 4000 },
+    attachment: {
+      url: { type: String, required: true },
+      name: { type: String, required: true, maxlength: 240 },
+      mimeType: { type: String, required: true, maxlength: 120 },
+      kind: { type: String, enum: ["image", "document"], required: true },
+      expiresAt: { type: Date, default: null },
+    },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
 );
@@ -155,6 +187,25 @@ const ChatReadSchema = new Schema<IChatRead>(
   { timestamps: true, minimize: false }
 );
 
+const VoiceCallSchema = new Schema(
+  {
+    chat: { type: Schema.Types.ObjectId, ref: "Chat", required: true, unique: true, index: true },
+    participants: [{
+      user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+      joinedAt: { type: Date, required: true },
+      lastSeenAt: { type: Date, required: true },
+    }],
+    signals: [{
+      from: { type: Schema.Types.ObjectId, ref: "User", required: true },
+      to: { type: Schema.Types.ObjectId, ref: "User", required: true },
+      type: { type: String, enum: ["offer", "answer", "candidate"], required: true },
+      payload: { type: Schema.Types.Mixed, required: true },
+      createdAt: { type: Date, required: true },
+    }],
+  },
+  { timestamps: true, minimize: false }
+);
+
 ChatReadSchema.index({ chat: 1, user: 1 }, { unique: true });
 
 export const ChatModel: Model<IChat> =
@@ -165,3 +216,6 @@ export const MessageModel: Model<IMessage> =
 
 export const ChatReadModel: Model<IChatRead> =
   (mongoose.models.ChatRead as Model<IChatRead>) || mongoose.model<IChatRead>("ChatRead", ChatReadSchema);
+
+export const VoiceCallModel: Model<any> =
+  (mongoose.models.VoiceCall as Model<any>) || mongoose.model("VoiceCall", VoiceCallSchema);

@@ -4,6 +4,7 @@ import { IQuery, QueryModel } from "@/modals/query.model";
 import { getSessionUser } from "./user";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rate-limit";
+import { sendChatMessage, startSupportChat } from "@/server-functions/chat";
 
 const queryInputSchema = z.object({
     name: z.string().trim().min(1).max(120),
@@ -27,6 +28,46 @@ export const createQuery = async (data: Partial<IQuery>) => {
     } catch (error) {
         return { error: "Error creating query" }
     }
+}
+
+export const createQueryAndSupportChat = async (data: Partial<IQuery>) => {
+        const result = await createQuery(data);
+        if (!result || "error" in result) return result || { error: "Could not save your message" };
+
+        const user = await getSessionUser();
+        if (!user?._id) {
+            return {
+                success: true,
+                chatAvailable: false,
+                message: "Your message was sent to support. Sign in to continue the conversation in chat.",
+        }
+
+        const chat = await startSupportChat();
+        const chatId = "chatId" in chat ? String((chat as { chatId?: string }).chatId || "") : "";
+        if ("error" in chat || !chatId) {
+            console.error("Support query was saved but chat delivery failed", chat);
+            return {
+                success: true,
+                chatAvailable: false,
+                message: "Your message was saved. Chat is temporarily unavailable.",
+            };
+        }
+
+        const sent = await sendChatMessage({
+            chatId,
+            text: `Contact form from ${data.name || "A learner"} (${data.email || "email not provided"})\n\n${data.description || ""}`,
+        });
+        if ("error" in sent) {
+            console.error("Support query was saved but chat message delivery failed", sent);
+            return {
+                success: true,
+                chatAvailable: false,
+                message: "Your message was saved. Chat delivery is temporarily unavailable.",
+            };
+        }
+
+        return { success: true, chatAvailable: true, chatId };
+    };
 }
 
 export const deleteQuery = async (queryId: string) => {

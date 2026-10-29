@@ -1,87 +1,21 @@
-"use client"
-import React from "react";
+import type { Metadata } from "next";
+import LegalPage, { type LegalSection } from "@/components/informative/legal-page";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy | Studic",
+  description: "Read how Studic collects, uses and protects account, payment and usage information.",
+  alternates: { canonical: "/privacy" },
+};
+
+const sections: LegalSection[] = [
+  { id: "collection", title: "Information we collect", body: "We may collect your name, email address, account details, learning activity, support messages and transaction details. We may also receive technical information such as device, browser, approximate location and IP address when you use the website." },
+  { id: "use", title: "How we use information", body: "We use information to create and secure accounts, provide courses and digital products, process payments, deliver support, improve the platform, prevent misuse and communicate important service updates." },
+  { id: "providers", title: "Payments and service providers", body: "Payments are processed through third-party payment providers. We do not intentionally store complete card or banking credentials. We may use trusted providers for authentication, hosting, email, analytics, file storage and media delivery." },
+  { id: "cookies", title: "Cookies and analytics", body: "Studic may use essential cookies for authentication and preferences. With analytics or advertising tools enabled, similar technologies may help us understand visits and improve the service. You can control cookies through your browser settings." },
+  { id: "retention", title: "Sharing and retention", body: "We do not sell personal information. Information may be shared with service providers, authorities when legally required, or to protect users and the platform. We retain information only as reasonably necessary for the stated purpose, legal obligations and dispute resolution." },
+  { id: "choices", title: "Your choices", body: "You may request access, correction or deletion of eligible personal information, or contact us about marketing preferences. Some records may need to be retained for security, accounting or legal reasons." },
+];
 
 export default function PrivacyPolicy() {
-  return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-t from-pink-500/5 via-background to-transparent backdrop-blur-xl">
-        <div className="container mx-auto text-center px-4">
-          <h1 className="text-4xl font-bold">Privacy Policy</h1>
-          <p className="mt-4 text-lg">Last updated: {new Date().toLocaleDateString()}</p>
-        </div>
-      </section>
-
-      {/* Privacy Content */}
-      <section className="py-8 my-2 mx-auto max-w-6xl bg-gradient-to-b from-pink-500/5 via-background to-transparent">
-        <div className="container mx-auto px-4 space-y-8">
-          <div className="shadow rounded-lg p-6 space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Information We Collect</h2>
-              <p>We collect information that you provide directly to us, including:</p>
-              <ul className="list-disc pl-6 mt-2 space-y-2">
-                <li>Name and email address when you create an account</li>
-                <li>Payment information when you make a purchase</li>
-                <li>Information about your usage of our services</li>
-                <li>Device information and IP address</li>
-              </ul>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold mb-4">How We Use Your Information</h2>
-              <p>We use the information we collect to:</p>
-              <ul className="list-disc pl-6 mt-2 space-y-2">
-                <li>Provide and maintain our services</li>
-                <li>Process your transactions</li>
-                <li>Send you technical notices and updates</li>
-                <li>Respond to your comments and questions</li>
-                <li>Improve our services</li>
-              </ul>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Information Sharing</h2>
-              <p>We do not sell or rent your personal information to third parties. We may share your information:</p>
-              <ul className="list-disc pl-6 mt-2 space-y-2">
-                <li>With service providers who assist in our operations</li>
-                <li>When required by law</li>
-                <li>To protect our rights and safety</li>
-              </ul>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Cookies and Tracking</h2>
-              <p>We use cookies and similar tracking technologies to:</p>
-              <ul className="list-disc pl-6 mt-2 space-y-2">
-                <li>Remember your preferences</li>
-                <li>Understand how you use our services</li>
-                <li>Improve your experience</li>
-                <li>Provide targeted advertising</li>
-              </ul>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Your Rights</h2>
-              <p>You have the right to:</p>
-              <ul className="list-disc pl-6 mt-2 space-y-2">
-                <li>Access your personal information</li>
-                <li>Correct inaccurate information</li>
-                <li>Request deletion of your information</li>
-                <li>Opt-out of marketing communications</li>
-              </ul>
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Contact Us</h2>
-              <p>If you have any questions about this Privacy Policy, please contact us at:</p>
-              <div className="mt-2">
-                <p>Email: mynmss3@gmail.com</p>
-                <p>Website: www.studic.in</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+  return <LegalPage eyebrow="Privacy & security" title="Your information, handled responsibly." description="This policy explains what information Studic uses, why we use it and the choices available to you when you use our learning platform." sections={sections} note="For privacy questions or requests, email us and include the email address connected to your account." />;
 }

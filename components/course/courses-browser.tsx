@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, GraduationCap, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "react-toastify";
@@ -41,14 +42,22 @@ function Skeleton() {
 }
 
 export default function CoursesBrowser() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
   const [courses, setCourses] = useState<ICourse[]>([]);
   const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState("");
-  const [activeSearch, setActiveSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
+  const [activeSearch, setActiveSearch] = useState(initialSearch);
   const [level, setLevel] = useState("all");
   const [access, setAccess] = useState<(typeof accessFilters)[number]["value"]>("all");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get("search") || "";
+    setSearch(nextSearch);
+    setActiveSearch(nextSearch.trim());
+  }, [searchParams]);
 
   useEffect(() => {
     const timer = setTimeout(() => setActiveSearch(search.trim()), 350);

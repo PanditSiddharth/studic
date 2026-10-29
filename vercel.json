@@ -2,6 +2,12 @@
     "functions": {
         "app/api/**/*": {
             "maxDuration": 60
-        }
+        },
+        "crons": [
+            {
+                "path": "/api/cron/cleanup-chat-media",
+                "schedule": "0 * * * *"
+            }
+        ]
     }
 }

@@ -51,6 +51,7 @@ const Footer = () => {
         { label: "Contact Us", href: "/contact", icon: Mail },
         { label: "Privacy Policy", href: "/privacy", icon: ShieldCheck },
         { label: "Terms & Conditions", href: "/tnc", icon: FileText },
+        { label: "Refund Policy", href: "/refund", icon: ShieldCheck },
       ],
     },
   ];
@@ -58,13 +59,13 @@ const Footer = () => {
   const socialLinks = [
     {
       label: "YouTube",
-      href: "https://youtube.com/ignouStudyCenter",
+      href: "https://youtube.com/ignoustudycenter",
       icon: FaYoutube,
       hover: "hover:text-red-600",
     },
     {
       label: "Telegram",
-      href: "https://telegram.me/ignou_Study_Channel",
+      href: "https://telegram.me/ignoustudychannel",
       icon: FaTelegram,
       hover: "hover:text-sky-500",
     },

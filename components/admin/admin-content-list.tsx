@@ -58,7 +58,6 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
   };
 
   const changeStatus = (item: Item, nextStatus: string) => {
-    if (kind === "products") { toast.info("Product status editing is not enabled in this view yet."); return; }
     if (nextStatus === "free" || nextStatus === "paid") {
       if (kind !== "blogs") return;
       if (nextStatus === "paid" && !(Number(item.price) > 0)) {
@@ -108,7 +107,12 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
             }</td>
             <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString("en-IN") : item.createdOn ? new Date(item.createdOn).toLocaleDateString("en-IN") : "—"}</td>
             <td className="px-5 py-4"><div className="flex justify-end gap-2">
-              {kind !== "products" && <select aria-label={`Visibility for ${item.title}`} value={["free", "paid"].includes(String(item.status)) ? "public" : item.status || "draft"} disabled={busy} onChange={(e) => changeStatus(item, e.target.value)} className="max-w-28 rounded-md border bg-background px-2 py-1 text-xs"><option value="draft">Draft</option><option value="private">Private</option>{kind === "courses" ? <option value="published">Public</option> : <option value="public">Public</option>}<option value="unlisted">Unlisted</option>{kind === "courses" && <option value="archived">Archived</option>}</select>}
+              <select aria-label={`Status for ${item.title}`} value={["free", "paid"].includes(String(item.status)) ? "public" : item.status || "draft"} disabled={busy} onChange={(e) => changeStatus(item, e.target.value)} className="max-w-28 rounded-md border bg-background px-2 py-1 text-xs">
+                <option value="draft">Draft</option>
+                {kind === "courses" && <><option value="private">Private</option><option value="published">Published</option><option value="unlisted">Unlisted</option><option value="archived">Archived</option></>}
+                {kind === "blogs" && <><option value="private">Private</option><option value="public">Public</option><option value="unlisted">Unlisted</option></>}
+                {kind === "products" && <><option value="published">Published</option><option value="archived">Archived</option></>}
+              </select>
               {kind === "blogs" && <select aria-label={`Access for ${item.title}`} value={item.accessType === "paid" || item.status === "paid" ? "paid" : "free"} disabled={busy} onChange={(e) => changeStatus(item, e.target.value)} className="max-w-24 rounded-md border bg-background px-2 py-1 text-xs"><option value="free">Free</option><option value="paid">Paid</option></select>}
               <Link aria-label={`Edit ${item.title}`} href={cfg.editHref(item)} className="rounded-md border p-2 hover:bg-muted"><Pencil size={15}/></Link>
               <button aria-label={`Delete ${item.title}`} disabled={busy} onClick={() => remove(item)} className="rounded-md border p-2 text-destructive hover:bg-destructive/10 disabled:opacity-50"><Trash2 size={15}/></button>

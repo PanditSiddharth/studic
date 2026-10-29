@@ -2,14 +2,46 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft, CheckCheck, Info, Loader2, Lock, MessageCircle, Send, ShieldCheck, Trash2,
+  ArrowLeft, CheckCheck, Download, ExternalLink, FileText, Info, Loader2, Lock, MessageCircle, Send, ShieldCheck, Trash2, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/modals/utils";
-import type { ChatMessage, ChatSummary } from "@/modals/chat.model";
+import type { ChatAttachment, ChatMessage, ChatSummary } from "@/modals/chat.model";
 import ChatAvatar from "./chat-avatar";
 import { formatTime, groupMessagesByDay, senderTone } from "./chat-utils";
+import ChatMediaUpload from "./chat-media-upload";
+import VoiceCall from "./voice-call";
+
+function AttachmentPreview({ attachment, compact = false }: { attachment: ChatAttachment; compact?: boolean }) {
+  if (attachment.kind === "image") {
+    return (
+      <a href={attachment.url} target="_blank" rel="noreferrer" className={cn("group mt-1 block overflow-hidden rounded-xl border border-black/10", compact ? "max-w-[220px]" : "max-w-[280px]")}>
+        <img src={attachment.url} alt={attachment.name} className="block max-h-72 w-full object-cover transition group-hover:opacity-90" />
+      </a>
+    );
+  }
+
+  const isPdf = attachment.mimeType.toLowerCase() === "application/pdf" || /\.pdf$/i.test(attachment.name);
+  if (isPdf && !compact) {
+    return (
+      <div className="mt-1 overflow-hidden rounded-xl border border-black/10 bg-background">
+        <iframe src={attachment.url} title={attachment.name} className="h-56 w-full" />
+        <a href={attachment.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 border-t px-3 py-2 text-xs font-medium hover:bg-muted">
+          <FileText size={14} className="shrink-0 text-primary" /><span className="min-w-0 flex-1 truncate">{attachment.name}</span><ExternalLink size={13} />
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-1 flex max-w-[280px] items-center gap-3 rounded-xl border border-black/10 bg-black/10 px-3 py-2.5 hover:bg-black/15">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background/80 text-primary"><FileText size={18} /></span>
+      <span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{attachment.name}</span><span className="block text-[10px] opacity-70">Open document</span></span>
+      <Download size={15} />
+    </a>
+  );
+}
 
 interface ChatWindowProps {
   chat: ChatSummary | null;
@@ -18,7 +50,8 @@ interface ChatWindowProps {
   sending: boolean;
   readOnly: boolean;
   currentUserId: string;
-  onSend: (text: string) => Promise<boolean>;
+  onSend: (text: string, attachment?: ChatAttachment) => Promise<boolean>;
+  mediaSettings: { allowMedia: boolean; allowImages: boolean; allowDocuments: boolean; allowVoiceCalls: boolean };
   onBack: () => void;
   onInfo: () => void;
   canModerate: boolean;
@@ -33,12 +66,14 @@ export default function ChatWindow({
   readOnly,
   currentUserId,
   onSend,
+  mediaSettings,
   onBack,
   onInfo,
   canModerate,
   onDelete,
 }: ChatWindowProps) {
   const [draft, setDraft] = useState("");
+  const [attachment, setAttachment] = useState<ChatAttachment | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeChatRef = useRef<string | null>(null);
@@ -46,6 +81,7 @@ export default function ChatWindow({
 
   useEffect(() => {
     setDraft("");
+    setAttachment(undefined);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -73,10 +109,11 @@ export default function ChatWindow({
 
   const submit = async () => {
     const value = draft.trim();
-    if (!value || sending || readOnly) return;
-    const sent = await onSend(value);
+    if ((!value && !attachment) || sending || readOnly) return;
+    const sent = await onSend(value, attachment);
     if (sent) {
       setDraft("");
+      setAttachment(undefined);
       requestAnimationFrame(() => {
         if (textareaRef.current) textareaRef.current.style.height = "auto";
         textareaRef.current?.focus();
@@ -111,6 +148,7 @@ export default function ChatWindow({
         >
           <ArrowLeft size={18} />
         </Button>
+        {mediaSettings.allowVoiceCalls ? <VoiceCall chatId={chat._id} currentUserId={currentUserId} /> : null}
         <ChatAvatar name={chat.title} image={chat.image} kind={chat.kind} seed={chat._id} className="h-10 w-10" />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
@@ -198,7 +236,8 @@ export default function ChatWindow({
                             {message.sender.name}
                           </p>
                         ) : null}
-                        <p className="whitespace-pre-wrap break-words leading-6">{message.text}</p>
+                        {message.text ? <p className="whitespace-pre-wrap break-words leading-6">{message.text}</p> : null}
+                        {message.attachment ? <AttachmentPreview attachment={message.attachment} /> : null}
                         <span
                           className={cn(
                             "mt-1 flex items-center justify-end gap-1 text-[10px]",
@@ -207,7 +246,7 @@ export default function ChatWindow({
                         >
                           {formatTime(message.createdAt)}
                           {own ? <CheckCheck size={12} /> : null}
-                          {canModerate ? (
+                          {(canModerate || own) ? (
                             <button
                               type="button"
                               className="ml-1 opacity-60 hover:opacity-100"
@@ -243,7 +282,16 @@ export default function ChatWindow({
             void submit();
           }}
         >
+          {attachment ? (
+            <div className="relative mb-2 w-fit max-w-full rounded-xl border bg-muted p-1.5">
+              <AttachmentPreview attachment={attachment} compact />
+              <button type="button" className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-background/90 text-muted-foreground shadow-sm hover:text-foreground" onClick={() => setAttachment(undefined)} aria-label="Remove attachment">
+                <X size={14} />
+              </button>
+            </div>
+          ) : null}
           <div className="flex items-end gap-2">
+            {mediaSettings.allowMedia ? <ChatMediaUpload allowImages={mediaSettings.allowImages} allowDocuments={mediaSettings.allowDocuments} onUploaded={setAttachment} /> : null}
             <Textarea
               ref={textareaRef}
               value={draft}
@@ -266,7 +314,7 @@ export default function ChatWindow({
               type="submit"
               size="icon"
               className="h-10 w-10 shrink-0 rounded-full"
-              disabled={!draft.trim() || sending}
+              disabled={(!draft.trim() && !attachment) || sending}
               aria-label="Send message"
             >
               {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
