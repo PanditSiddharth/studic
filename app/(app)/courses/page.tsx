@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import CoursesBrowser from "@/components/course/courses-browser";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function CoursesPage() {
-  return <CoursesBrowser />;
+  return (
+    <Suspense fallback={<div className="min-h-[60vh] w-full animate-pulse bg-muted/20" />}>
+      <CoursesBrowser />
+    </Suspense>
+  );
 }
