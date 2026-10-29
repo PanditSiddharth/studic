@@ -69,12 +69,6 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">
         <section className="relative overflow-hidden border-b">
-          <motion.div
-            aria-hidden="true"
-            className="absolute left-1/2 top-0 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/15 blur-[120px]"
-            animate={reduceMotion ? undefined : { scale: [1, 1.15, 1], opacity: [0.55, 0.8, 0.55] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          />
           <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:px-8">
             <motion.div className="max-w-2xl" initial="hidden" animate="show" variants={reveal}>
               <motion.span variants={reveal} className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">

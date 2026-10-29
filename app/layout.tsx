@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import Navbar from "@/components/navbar/Navbar";
 import { ToastProvider } from "@/components/ToastProvider";
 import localFont from "next/font/local";
-import { DOMAIN } from "@/lib/seo";
+import { absoluteUrl, DOMAIN } from "@/lib/seo";
 const tdb = localFont({
   src: "../public/fonts/tdb.ttf",
   variable: "--tdb",
@@ -44,11 +44,20 @@ export const metadata: Metadata = {
     title: "Studic | Learn, Build and Grow",
     description: "Practical courses, useful articles and downloadable resources for learners and builders.",
     url: DOMAIN,
+    images: [
+      {
+        url: absoluteUrl("/code%20pic_files/logo-blue.png"),
+        width: 1200,
+        height: 630,
+        alt: "Studic - Learn, Build and Grow",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Studic | Learn, Build and Grow",
     description: "Practical courses, useful articles and downloadable resources.",
+    images: [absoluteUrl("/code%20pic_files/logo-blue.png")],
   },
   robots: { index: true, follow: true },
 };
@@ -66,6 +75,24 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning >
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "Studic",
+              url: DOMAIN,
+              logo: absoluteUrl("/code%20pic_files/logo-blue.png"),
+              sameAs: [
+                "https://youtube.com/ignoustudycenter",
+                "https://telegram.me/ignoustudychannel",
+                "https://github.com/PanditSiddharth",
+                "https://linkedin.com/in/sidsharma0",
+              ],
+            }),
+          }}
+        />
         {process.env.NODE_ENV === "production" && (
           <Script
             async
