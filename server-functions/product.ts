@@ -6,6 +6,8 @@ import { IOrder, OrderModel } from "@/modals/order.model";
 import { err, productFilter } from "@/helpers";
 import { getItemAccess } from "./library";
 import mongoose from "mongoose";
+import { deleteCloudinaryAssets } from "@/lib/cloudinary";
+import { cloudinaryReference } from "@/lib/cloudinary";
 
 interface GetProductOptions {
     skip: number
@@ -88,6 +90,10 @@ export async function addOrUpdateProducts(data: Partial<IProduct> | Partial<IPro
             }
             const safeData: Partial<IProduct> = { ...productData };
             delete safeData._id;
+            const thumbnailReference = cloudinaryReference(safeData.thumbnail);
+            const fileReference = cloudinaryReference(safeData.fileLink);
+            if (thumbnailReference) safeData.thumbnailPublicId = thumbnailReference.publicId;
+            if (fileReference) safeData.filePublicId = fileReference.publicId;
             if (!existing || user.role !== "admin") safeData.seller = user._id;
             const product = await ProductModel.findOneAndUpdate({ _id: id }, safeData, options);
             if (!product) return { error: "Something went wrong in updating product server side" }
@@ -110,7 +116,12 @@ export async function deleteProducts(productIds: string | string[]) {
     try {
         const pdIdArray = Array.isArray(productIds) ? productIds : [productIds]
         await connectDB()
+        const products = await ProductModel.find({ _id: { $in: pdIdArray } }).select("thumbnail fileLink").lean();
+        await OrderModel.deleteMany({ product: { $in: pdIdArray } });
         const res = await ProductModel.deleteMany({ _id: { $in: pdIdArray } })
+        if (res.deletedCount) {
+            await deleteCloudinaryAssets(products.flatMap((product) => [product.thumbnail, product.fileLink]));
+        }
         return {success: res.acknowledged, deletedCount: res.deletedCount}
     } catch (error: any) {
         return err(error, "f", {ret: error.message});

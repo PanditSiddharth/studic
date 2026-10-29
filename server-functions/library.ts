@@ -325,6 +325,19 @@ export async function getMyLibrary() {
 
     if (!user) return { error: "Your account could not be loaded" };
 
+    const orphanedEnrollments = enrollments
+      .filter((enrollment: any) => !enrollment.course?._id)
+      .map((enrollment: any) => enrollment._id);
+    const orphanedOrders = orders
+      .filter((order: any) => !order.product && !order.course && !order.blog)
+      .map((order: any) => order._id);
+    if (orphanedEnrollments.length) {
+      await EnrollmentModel.deleteMany({ _id: { $in: orphanedEnrollments } });
+    }
+    if (orphanedOrders.length) {
+      await OrderModel.deleteMany({ _id: { $in: orphanedOrders } });
+    }
+
     const courses = enrollments
       .map((enrollment: any) => {
         const course = enrollment.course;
@@ -352,7 +365,9 @@ export async function getMyLibrary() {
 
     const seenProducts = new Set<string>();
     const products: any[] = [];
-    const updatedOrders = orders.map((order: any) => {
+    const updatedOrders = orders
+      .filter((order: any) => Boolean(order.product || order.course || order.blog))
+      .map((order: any) => {
       const isPaid = order.status === "paid";
       const item = order.product || order.course || order.blog;
       const itemTitle = item?.title || "Removed item";
@@ -376,7 +391,7 @@ export async function getMyLibrary() {
             mimeType: order.product.mimeType,
             orderId: order.orderId,
             ownedAt: order.paidAt || order.createdOn,
-          });
+            });
         }
       }
 

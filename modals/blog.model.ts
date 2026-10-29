@@ -13,6 +13,7 @@ export interface IBlog {
   currency?: string;
   description: string;
   thumbnail: string;
+  thumbnailPublicId?: string;
   content: string;
   category: string[];
   tags: string[];
@@ -38,6 +39,7 @@ export const BlogSchema = new Schema<IBlog>(
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
     description: { type: String, default: "", maxlength: 10000 },
     thumbnail: { type: String, default: "" },
+    thumbnailPublicId: { type: String, trim: true },
     category: { type: [String], default: [], index: true },
     content: { type: String, default: "" },
     tags: { type: [String], default: [] },

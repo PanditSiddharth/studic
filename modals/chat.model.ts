@@ -24,6 +24,7 @@ export interface ChatSummary {
   kind: ChatKind;
   title: string;
   subtitle: string;
+  description?: string;
   image?: string;
   participants: ChatUser[];
   memberCount: number;

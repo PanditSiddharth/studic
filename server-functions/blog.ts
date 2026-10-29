@@ -6,6 +6,7 @@ import { getSessionUser } from "./user";
 import mongoose from "mongoose";
 import { blogFilter, isHiddenBlogStatus, isPaidBlog, normalizeBlogCategories } from "@/helpers";
 import { getItemAccess } from "./library";
+import { cloudinaryReference } from "@/lib/cloudinary";
 
 export const addOrUpdateBlog = async (blog: Partial<IBlog>): Promise<Partial<IBlog> | { error: string }> => {
     try {
@@ -14,9 +15,11 @@ export const addOrUpdateBlog = async (blog: Partial<IBlog>): Promise<Partial<IBl
         if (!user || user.role !== "admin") return { error: "Administrator access required" };
 
         const options = { new: true, upsert: true, setDefaultsOnInsert: true };
+        const thumbnailReference = cloudinaryReference(blog.thumbnail);
+        const safeBlog = { ...blog, ...(thumbnailReference ? { thumbnailPublicId: thumbnailReference.publicId } : {}) };
         const product = await BlogModel.findOneAndUpdate(
             { _id: blog._id || new mongoose.Types.ObjectId() },
-            blog, options
+            safeBlog, options
         );
 
         if (!product) return { error: "Something went wrong in processing the blog" };

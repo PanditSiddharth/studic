@@ -5,7 +5,10 @@ import { getSessionUser } from "@/server-functions/user";
 import { CourseModel } from "@/modals/course.model";
 import { BlogModel } from "@/modals/blog.model";
 import { ProductModel } from "@/modals/product.model";
+import { OrderModel } from "@/modals/order.model";
+import { EnrollmentModel } from "@/modals/enrollment.model";
 import mongoose from "mongoose";
+import { deleteCloudinaryAssets } from "@/lib/cloudinary";
 
 type ContentKind = "courses" | "blogs" | "products";
 
@@ -45,20 +48,32 @@ export async function deleteAdminContent(kind: ContentKind, ids: string | string
   if (!list.length) return { error: "Select at least one valid record." };
   await connectDB();
   if (kind === "courses") {
-    // Preserve purchased access/order history; detach content relationships rather than deleting linked articles.
+    // Courses are independent from their lessons/products, but access and purchase
+    // records must disappear when the course itself is deleted.
+    const courses = await CourseModel.find({ _id: { $in: list } }).select("thumbnail").lean();
+    await BlogModel.updateMany({ course: { $in: list } }, { $unset: { course: 1 } });
+    await EnrollmentModel.deleteMany({ course: { $in: list } });
+    await OrderModel.deleteMany({ course: { $in: list } });
     const result = await CourseModel.deleteMany({ _id: { $in: list } });
+    if (result.deletedCount) await deleteCloudinaryAssets(courses.map((course) => course.thumbnail));
     return { success: true, deletedCount: result.deletedCount || 0 };
   }
   if (kind === "blogs") {
     // Remove deleted articles from course playlists before deleting them.
     await CourseModel.updateMany({ content: { $in: list } }, { $pull: { content: { $in: list } } });
+    const blogs = await BlogModel.find({ _id: { $in: list } }).select("thumbnail").lean();
+    await OrderModel.deleteMany({ blog: { $in: list } });
     const result = await BlogModel.deleteMany({ _id: { $in: list } });
+    if (result.deletedCount) await deleteCloudinaryAssets(blogs.map((blog) => blog.thumbnail));
     return { success: true, deletedCount: result.deletedCount || 0 };
   }
   // Products referenced by blog articles and course bundles are detached before deletion.
   await BlogModel.updateMany({ products: { $in: list } }, { $pull: { products: { $in: list } } });
   await CourseModel.updateMany({ products: { $in: list } }, { $pull: { products: { $in: list } } });
+  const products = await ProductModel.find({ _id: { $in: list } }).select("thumbnail fileLink").lean();
+  await OrderModel.deleteMany({ product: { $in: list } });
   const result = await ProductModel.deleteMany({ _id: { $in: list } });
+  if (result.deletedCount) await deleteCloudinaryAssets(products.flatMap((product) => [product.thumbnail, product.fileLink]));
   return { success: true, deletedCount: result.deletedCount || 0 };
 }
 

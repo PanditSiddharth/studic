@@ -7,19 +7,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ChatSummary } from "@/modals/chat.model";
 import ChatAvatar from "./chat-avatar";
-import { cn } from "@/modals/utils";
-import { muteChatUser, updateChatModeration } from "@/server-functions/chat";
+import { muteChatUser, updateChatDetails, updateChatModeration } from "@/server-functions/chat";
+import ChatImageUpload from "./chat-image-upload";
 
 interface ChatInfoProps {
   chat: ChatSummary;
   currentUserId: string;
   readOnly: boolean;
+  onUpdated?: (details: { name: string; description: string; image: string }) => void;
 }
 
-export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProps) {
+export default function ChatInfo({ chat, currentUserId, readOnly, onUpdated }: ChatInfoProps) {
+  const [name, setName] = useState(chat.title);
+  const [description, setDescription] = useState(chat.description || "");
+  const [image, setImage] = useState(chat.image || "");
   const [slowMode, setSlowMode] = useState(String(chat.moderation?.slowModeSeconds || 0));
   const [words, setWords] = useState((chat.moderation?.restrictedWords || []).join(", "));
   const [saving, setSaving] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
+
+  const saveDetails = async () => {
+    setSavingDetails(true);
+    const result = await updateChatDetails({ chatId: chat._id, name, description, image });
+    setSavingDetails(false);
+    if ("error" in result) toast.error(result.error);
+    else {
+      onUpdated?.({ name, description, image });
+      toast.success("Group details updated");
+    }
+  };
 
   const saveModeration = async () => {
     setSaving(true);
@@ -52,6 +68,16 @@ export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProp
         />
         <h3 className="mt-3 break-words text-base font-semibold">{chat.title}</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">{chat.subtitle}</p>
+        {chat.kind === "group" && chat.moderation?.canManage ? (
+          <div className="mt-4 space-y-3 text-left">
+            <ChatImageUpload value={image} onChange={setImage} />
+            <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} aria-label="Group name" />
+            <Input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={500} placeholder="Group description" aria-label="Group description" />
+            <Button type="button" size="sm" className="w-full" disabled={savingDetails} onClick={() => void saveDetails()}>
+              {savingDetails ? "Saving..." : "Save group profile"}
+            </Button>
+          </div>
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
           {chat.kind === "group" ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -71,7 +97,7 @@ export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProp
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {chat.kind === "group" && chat.isParticipant === false ? (
           <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-[11px] leading-5 text-muted-foreground">
             <ShieldCheck size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -83,9 +109,7 @@ export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProp
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">About</p>
             <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-              {chat.participants.length > 0
-                ? "A shared space for this group to learn and talk together."
-                : "No description yet."}
+              {chat.description || "A shared space for this group to learn and talk together."}
             </p>
           </div>
         ) : null}
@@ -157,7 +181,7 @@ export default function ChatInfo({ chat, currentUserId, readOnly }: ChatInfoProp
                         <span className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">You</span>
                       ) : null}
                     </span>
-                    <span className={cn("block truncate text-[11px] text-muted-foreground")}>
+                    <span className="block truncate text-[11px] text-muted-foreground">
                       {participant.username ? `@${participant.username}` : participant.role === "admin" ? "Studic admin" : "Studic learner"}
                     </span>
                   </span>

@@ -9,6 +9,8 @@ export interface IProduct {
   price: number;
   description: string;
   thumbnail: string;
+  thumbnailPublicId?: string;
+  filePublicId?: string;
   tags: string[];
   fileLink?: string;
   seller?: string;
@@ -32,6 +34,8 @@ export const ProductSchema = new Schema<IProduct>(
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
     tags: { type: [String], default: [], index: true },
     thumbnail: { type: String, default: "" },
+    thumbnailPublicId: { type: String, trim: true },
+    filePublicId: { type: String, trim: true },
     fileLink: { type: String },
     seller: { type: Schema.Types.ObjectId, ref: "User", index: true },
     status: { type: String, enum: ["draft", "published", "archived"], default: "draft", index: true },

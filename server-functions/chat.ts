@@ -111,6 +111,7 @@ const toChatSummary = (
     kind: isGroup ? "group" : "direct",
     title,
     subtitle,
+    description: isGroup ? String(chat?.description || "") : undefined,
     image: isGroup ? chat?.image || "" : other?.image || "",
     participants,
     memberCount: participants.length,
@@ -403,6 +404,35 @@ export async function updateChatModeration(input: {
   } catch (error: any) {
     console.error("Error updating chat moderation", error);
     return { error: error?.message || "Could not update group restrictions" };
+  }
+}
+
+export async function updateChatDetails(input: {
+    chatId: string;
+    name: string;
+    description?: string;
+    image?: string;
+  }) {
+    const user = await getSessionUser();
+    if (!user?._id) return { error: "Sign in to manage this group" };
+    if (!mongoose.isValidObjectId(input?.chatId)) return { error: "Group not found" };
+    const name = String(input?.name || "").trim();
+    const description = String(input?.description || "").trim();
+    const image = String(input?.image || "").trim();
+    if (name.length < 2 || name.length > 80) return { error: "Group name must be 2–80 characters" };
+    if (description.length > 500) return { error: "Keep the description under 500 characters" };
+    if (image && !/^https:\/\/res\.cloudinary\.com\//i.test(image)) return { error: "Use a valid Cloudinary image" };
+
+    try {
+      await connectDB();
+      const chat = await ChatModel.findById(input.chatId).select("kind createdBy admins");
+      if (!chat || chat.kind !== "group") return { error: "Group not found" };
+      if (!canManageChat(chat, user)) return { error: "Only the group owner or an admin can edit this group" };
+      await ChatModel.updateOne({ _id: chat._id }, { $set: { name, description, image } });
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error updating chat details", error);
+      return { error: error?.message || "Could not update group details" };
   }
 }
 

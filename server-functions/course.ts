@@ -6,6 +6,7 @@ import { getSessionUser } from "./user";
 import mongoose from "mongoose";
 import { courseFilter, blogFilter, isHiddenBlogStatus, isPaidBlog } from "@/helpers";
 import { getItemAccess } from "./library";
+import { cloudinaryReference } from "@/lib/cloudinary";
 
 export const addOrUpdateCourse = async (course: Partial<ICourse>): Promise<Partial<ICourse> | { error: string }> => {
     try {
@@ -14,9 +15,11 @@ export const addOrUpdateCourse = async (course: Partial<ICourse>): Promise<Parti
         if (!user || user.role !== "admin") return { error: "Administrator access required" };
 
         const options = { new: true, upsert: true, setDefaultsOnInsert: true };
+        const thumbnailReference = cloudinaryReference(course.thumbnail);
+        const safeCourse = { ...course, ...(thumbnailReference ? { thumbnailPublicId: thumbnailReference.publicId } : {}) };
         const courseRes = await CourseModel.findOneAndUpdate(
             { _id: course._id || new mongoose.Types.ObjectId() },
-            course, options
+            safeCourse, options
         );
 
         if (!courseRes) return { error: "Something went wrong in processing the course" };

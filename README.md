@@ -182,9 +182,10 @@ AUTH_GITHUB_SECRET=github_client_secret
 
 # Cloudinary
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-PRESET_NAME=your_upload_preset
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
 
 # Site and SEO
 DOMAIN=https://www.example.com

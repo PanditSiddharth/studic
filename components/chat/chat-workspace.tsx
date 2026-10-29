@@ -217,6 +217,16 @@ export default function ChatWorkspace() {
     setMessages((current) => current.filter((message) => message._id !== messageId));
   };
 
+  const handleChatUpdated = (details: { name: string; description: string; image: string }) => {
+    if (!chat) return;
+    const update = (item: ChatSummary) =>
+      item._id === chat._id
+        ? { ...item, title: details.name, description: details.description, image: details.image }
+        : item;
+    setChat((current) => current ? update(current) : current);
+    setChats((current) => current.map(update));
+  };
+
   if (status === "loading" || (status === "authenticated" && loadingChats && chats.length === 0)) {
     return (
       <div className="flex h-[calc(100dvh-4rem)] items-center justify-center text-muted-foreground">
@@ -226,11 +236,11 @@ export default function ChatWorkspace() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-0 sm:px-4 sm:py-4 lg:px-6">
+    <div className="mx-auto h-full w-full">
       <div
         className={cn(
-          "grid h-[calc(100dvh-4rem)] min-h-[520px] overflow-hidden bg-card",
-          "sm:h-[calc(100dvh-6rem)] sm:rounded-2xl sm:border sm:shadow-sm",
+          "grid h-full min-h-0 overflow-hidden bg-card",
+          "sm:rounded-none sm:border-0 sm:shadow-none",
           "grid-cols-1 md:grid-cols-[minmax(290px,340px)_minmax(0,1fr)]",
           chat && "xl:grid-cols-[minmax(290px,340px)_minmax(0,1fr)_minmax(260px,300px)]"
         )}
@@ -263,7 +273,7 @@ export default function ChatWorkspace() {
 
         {chat ? (
           <aside className="hidden min-h-0 border-l xl:block">
-            <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} />
+            <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} onUpdated={handleChatUpdated} />
           </aside>
         ) : null}
       </div>
@@ -276,7 +286,7 @@ export default function ChatWorkspace() {
           <DialogDescription className="sr-only">
             Members and details for this conversation
           </DialogDescription>
-          {chat ? <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} /> : null}
+          {chat ? <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} onUpdated={handleChatUpdated} /> : null}
         </DialogContent>
       </Dialog>
     </div>

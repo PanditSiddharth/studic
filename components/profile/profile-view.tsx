@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMyLibrary, updateMyProfile } from "@/server-functions/library";
 import { formatPrice } from "@/components/product/product-card";
 import { cn } from "@/modals/utils";
+import { CloudinaryImageUpload } from "@/components/product/image-upload";
 
 type LibraryUser = {
   _id?: string;
@@ -243,8 +244,14 @@ export default function ProfileView() {
                   <Input id="profile-phone" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="h-10" placeholder="Optional" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="profile-image" className="text-xs">Avatar URL</Label>
-                  <Input id="profile-image" value={form.image} onChange={(event) => setForm({ ...form, image: event.target.value })} className="h-10" placeholder="https://…" />
+                  <Label className="text-xs">Profile photo</Label>
+                  <CloudinaryImageUpload
+                    img_src={form.image}
+                    aspectRatio={1}
+                    onChange={(image) => setForm({ ...form, image })}
+                    className="max-w-[180px] rounded-full"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Square image · drag to position and zoom before uploading.</p>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="profile-about" className="text-xs">About</Label>

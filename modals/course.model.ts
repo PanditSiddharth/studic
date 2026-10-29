@@ -11,6 +11,7 @@ export interface ICourse {
   price: number;
   description: string;
   thumbnail: string;
+  thumbnailPublicId?: string;
   content: string[] | mongoose.Types.ObjectId[] | unknown[];
   /** Downloadable products bundled with the course. */
   products?: string[] | mongoose.Types.ObjectId[] | unknown[];
@@ -38,6 +39,7 @@ const CourseSchema = new Schema<ICourse>(
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
     description: { type: String, required: true, maxlength: 10000 },
     thumbnail: { type: String, required: true, default: "" },
+    thumbnailPublicId: { type: String, trim: true },
     content: [{ type: Schema.Types.ObjectId, ref: "Blog" }],
     products: [{ type: Schema.Types.ObjectId, ref: "Product" }],
     tags: { type: [String], default: [] },
