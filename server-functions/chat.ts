@@ -16,6 +16,7 @@ import { UserModel } from "@/modals/user.model";
 import { getSessionUser } from "./user";
 import { ChatSettingsModel } from "@/modals/chat-settings.model";
 import { deleteExpiredCloudinaryAssets } from "@/lib/cloudinary";
+import { consumeServerRateLimit } from "@/lib/server-rate-limit";
 
 const idOf = (value: any) => String(value?._id ?? value ?? "");
 const isAdmin = (user: any) => user?.role === "admin";
@@ -315,6 +316,8 @@ export async function getChat(chatId: string) {
 export async function getChatMessages(input: { chatId: string; after?: string }) {
   const user = await getSessionUser();
   if (!user?._id) return { error: "Sign in to open chats" };
+  const limiter = await consumeServerRateLimit(`chat:read:${user._id}`, 120, 60_000);
+  if (!limiter.allowed) return { error: `Too many requests. Try again in ${limiter.retryAfter}s.` };
   if (!mongoose.isValidObjectId(input?.chatId)) return { error: "Chat not found" };
 
   try {
@@ -368,6 +371,8 @@ export async function sendChatMessage(input: {
 }) {
   const user = await getSessionUser();
   if (!user?._id) return { error: "Sign in to send messages", requiresAuth: true };
+  const limiter = await consumeServerRateLimit(`chat:send:${user._id}`, 30, 60_000);
+  if (!limiter.allowed) return { error: `You are sending messages too quickly. Try again in ${limiter.retryAfter}s.` };
   if (!mongoose.isValidObjectId(input?.chatId)) return { error: "Chat not found" };
 
   const text = String(input?.text || "").trim();
@@ -582,6 +587,8 @@ const voiceParticipant = (entry: any) => ({
 export async function joinVoiceCall(chatId: string) {
   const user = await getSessionUser();
   if (!user?._id) return { error: "Sign in to join a voice call", requiresAuth: true };
+  const limiter = await consumeServerRateLimit(`voice:join:${user._id}`, 12, 60_000);
+  if (!limiter.allowed) return { error: `Too many call attempts. Try again in ${limiter.retryAfter}s.` };
   if (!mongoose.isValidObjectId(chatId)) return { error: "Chat not found" };
   try {
     await connectDB();
@@ -638,10 +645,19 @@ export async function heartbeatVoiceCall(chatId: string) {
 export async function exchangeVoiceSignal(input: { chatId: string; to: string; type: "offer" | "answer" | "candidate"; payload: Record<string, unknown> }) {
   const user = await getSessionUser();
   if (!user?._id || !mongoose.isValidObjectId(input?.chatId) || !mongoose.isValidObjectId(input?.to)) return { error: "Invalid voice signal" };
+  const limiter = await consumeServerRateLimit(`voice:signal:${user._id}`, 180, 60_000);
+  if (!limiter.allowed) return { error: `Voice signalling rate limit reached. Try again in ${limiter.retryAfter}s.` };
+  if (!input.payload || JSON.stringify(input.payload).length > 16_384) return { error: "Voice signal payload is too large" };
   await connectDB();
   const call: any = await VoiceCallModel.findOne({ chat: input.chatId, "participants.user": { $all: [user._id, input.to] } });
   if (!call) return { error: "Both users must be in the voice call" };
-  await VoiceCallModel.updateOne({ _id: call._id }, { $push: { signals: { from: user._id, to: input.to, type: input.type, payload: input.payload, createdAt: new Date() } } });
+  await VoiceCallModel.updateOne(
+    { _id: call._id },
+    {
+      $pull: { signals: { createdAt: { $lt: new Date(Date.now() - 30_000) } } },
+      $push: { signals: { $each: [{ from: user._id, to: input.to, type: input.type, payload: input.payload, createdAt: new Date() }], $slice: -100 } },
+    }
+  );
   return { success: true };
 }
 
