@@ -108,9 +108,9 @@ export default function RootLayout({
         <SessionProvider >
           <ThemeProvider {...themeOptions} attribute={"class"}>
             <Navbar />
-            <div className="w-72 h-72 rounded-full bg-purple-600/30 blur-[128px] absolute  left-5 top-0 z-[-1]" />
-            <div className="w-72 h-72 rounded-full bg-purple-600/20 blur-[128px] absolute  left-20 top-[50%] z-[-1]" />
-            <div className="w-72 h-72 rounded-full bg-purple-600/30 blur-[128px] absolute  right-0 top-[70%] z-[-1]" />
+            <div className="w-72 h-72 rounded-full bg-purple-600/7 blur-[128px] absolute  left-5 top-0 z-[-1]" />
+            <div className="w-72 h-72 rounded-full bg-purple-600/10 blur-[128px] absolute  left-20 top-[50%] z-[-1]" />
+            <div className="w-72 h-72 rounded-full bg-purple-600/7 blur-[128px] absolute  right-0 top-[70%] z-[-1]" />
             {children}
             <ToastProvider />
 
