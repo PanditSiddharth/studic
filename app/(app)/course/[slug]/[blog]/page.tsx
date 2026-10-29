@@ -307,11 +307,12 @@ export default function Blog(props: any) {
         <MarkdownPreview
           data-blog-article=""
           style={{
-            backgroundColor: currentTheme === "dark" ? "rgba(0, 0, 0, 0.2)" : "rgba(255, 255, 255, 0.2)",
+            backgroundColor: "transparent",
+            color: "inherit",
             fontFamily: "sans-serif",
           }}
           rehypePlugins={[rehypeHighlight]}
-          className="mx-auto w-full max-w-4xl rounded-xl p-3 sm:p-5"
+          className="mx-auto w-full max-w-4xl rounded-xl p-3 sm:p-5 [&_*]:!border-border [&_h1]:!text-foreground [&_h2]:!text-foreground [&_h3]:!text-foreground [&_p]:!text-foreground [&_li]:!text-foreground [&_blockquote]:!border-l-border [&_blockquote]:!text-muted-foreground [&_pre]:!bg-[#171a21] [&_pre]:!text-gray-100 [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_code:not(pre_code)]:!bg-muted [&_code:not(pre_code)]:!text-foreground"
           source={cleanArticleContent(blog.content)}
         />
 
