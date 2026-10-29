@@ -212,3 +212,75 @@
 [data-color-mode="light"] [data-blog-article] pre .hljs-bullet {
   color: #953800 !important;
 }
+
+
+/* Theme-aware code blocks: the active theme is set directly on MarkdownPreview. */
+[data-blog-article][data-color-mode="dark"] pre,
+[data-blog-article][data-color-mode="dark"] pre code,
+[data-blog-article][data-color-mode="dark"] pre code.hljs {
+  background: #171c24 !important;
+  color: #dbe5f0 !important;
+}
+[data-blog-article][data-color-mode="dark"] pre .hljs-keyword,
+[data-blog-article][data-color-mode="dark"] pre .hljs-selector-tag,
+[data-blog-article][data-color-mode="dark"] pre .hljs-literal {
+  color: #ff8b93 !important;
+}
+[data-blog-article][data-color-mode="dark"] pre .hljs-title,
+[data-blog-article][data-color-mode="dark"] pre .hljs-title.function_,
+[data-blog-article][data-color-mode="dark"] pre .hljs-function {
+  color: #88c5ff !important;
+}
+[data-blog-article][data-color-mode="dark"] pre .hljs-string,
+[data-blog-article][data-color-mode="dark"] pre .hljs-regexp {
+  color: #a8e6a3 !important;
+}
+[data-blog-article][data-color-mode="dark"] pre .hljs-number,
+[data-blog-article][data-color-mode="dark"] pre .hljs-built_in,
+[data-blog-article][data-color-mode="dark"] pre .hljs-type,
+[data-blog-article][data-color-mode="dark"] pre .hljs-attr {
+  color: #f6c177 !important;
+}
+[data-blog-article][data-color-mode="dark"] pre .hljs-comment {
+  color: #9caec1 !important;
+}
+
+/* Light mode overrides all dark-only token colors and surfaces. */
+[data-blog-article][data-color-mode="light"] pre,
+[data-blog-article][data-color-mode="light"] pre code,
+[data-blog-article][data-color-mode="light"] pre code.hljs {
+  background: #f6f8fa !important;
+  color: #24292f !important;
+}
+[data-blog-article][data-color-mode="light"] pre .hljs,
+[data-blog-article][data-color-mode="light"] pre .hljs-subst,
+[data-blog-article][data-color-mode="light"] pre .hljs-variable,
+[data-blog-article][data-color-mode="light"] pre .hljs-params,
+[data-blog-article][data-color-mode="light"] pre .hljs-property,
+[data-blog-article][data-color-mode="light"] pre .hljs-punctuation,
+[data-blog-article][data-color-mode="light"] pre .hljs-operator {
+  color: #24292f !important;
+}
+[data-blog-article][data-color-mode="light"] pre .hljs-keyword,
+[data-blog-article][data-color-mode="light"] pre .hljs-selector-tag,
+[data-blog-article][data-color-mode="light"] pre .hljs-literal {
+  color: #cf222e !important;
+}
+[data-blog-article][data-color-mode="light"] pre .hljs-title,
+[data-blog-article][data-color-mode="light"] pre .hljs-title.function_,
+[data-blog-article][data-color-mode="light"] pre .hljs-function {
+  color: #8250df !important;
+}
+[data-blog-article][data-color-mode="light"] pre .hljs-string,
+[data-blog-article][data-color-mode="light"] pre .hljs-regexp {
+  color: #116329 !important;
+}
+[data-blog-article][data-color-mode="light"] pre .hljs-number,
+[data-blog-article][data-color-mode="light"] pre .hljs-built_in,
+[data-blog-article][data-color-mode="light"] pre .hljs-type,
+[data-blog-article][data-color-mode="light"] pre .hljs-attr {
+  color: #0550ae !important;
+}
+[data-blog-article][data-color-mode="light"] pre .hljs-comment {
+  color: #6e7781 !important;
+}
