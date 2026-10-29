@@ -112,3 +112,55 @@
     color: var(--hljs-deleted-color);
     background-color: var(--hljs-deleted-bg);
   }  
+
+/* Scoped syntax colors for the Studic markdown preview.
+   The preview always uses a dark code surface, independent of page theme. */
+[data-blog-article] pre,
+[data-blog-article] pre code,
+[data-blog-article] pre code.hljs {
+  background-color: #171c24 !important;
+  color: #dbe5f0 !important;
+}
+[data-blog-article] pre code.hljs {
+  display: block;
+  overflow-x: auto;
+}
+[data-blog-article] pre .hljs,
+[data-blog-article] pre .hljs-subst,
+[data-blog-article] pre .hljs-variable,
+[data-blog-article] pre .hljs-params,
+[data-blog-article] pre .hljs-property,
+[data-blog-article] pre .hljs-punctuation,
+[data-blog-article] pre .hljs-operator {
+  color: #dbe5f0 !important;
+}
+[data-blog-article] pre .hljs-keyword,
+[data-blog-article] pre .hljs-selector-tag,
+[data-blog-article] pre .hljs-literal {
+  color: #ff8b93 !important;
+}
+[data-blog-article] pre .hljs-title,
+[data-blog-article] pre .hljs-title.function_,
+[data-blog-article] pre .hljs-function {
+  color: #88c5ff !important;
+}
+[data-blog-article] pre .hljs-string,
+[data-blog-article] pre .hljs-regexp,
+[data-blog-article] pre .hljs-template-tag {
+  color: #a8e6a3 !important;
+}
+[data-blog-article] pre .hljs-number,
+[data-blog-article] pre .hljs-built_in,
+[data-blog-article] pre .hljs-type,
+[data-blog-article] pre .hljs-attr {
+  color: #f6c177 !important;
+}
+[data-blog-article] pre .hljs-comment,
+[data-blog-article] pre .hljs-quote {
+  color: #9caec1 !important;
+}
+[data-blog-article] pre .hljs-attribute,
+[data-blog-article] pre .hljs-symbol,
+[data-blog-article] pre .hljs-bullet {
+  color: #c4a7ff !important;
+}
