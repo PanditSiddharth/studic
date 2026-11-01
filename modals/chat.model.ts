@@ -2,6 +2,17 @@ import mongoose, { Schema, type Model } from "mongoose";
 
 export type ChatKind = "direct" | "group";
 
+export interface ChatPermissions {
+  membersCanMessage: boolean;
+  adminsOnlyMessaging: boolean;
+  membersCanSendMedia: boolean;
+  membersCanEditInfo: boolean;
+  membersCanInvite: boolean;
+  membersCanUseVoice: boolean;
+  isPublic: boolean;
+  isDiscoverable: boolean;
+}
+
 /** A user as exposed inside chat payloads. Never includes private fields. */
 export interface ChatUser {
   _id: string;
@@ -39,6 +50,9 @@ export interface ChatSummary {
   moderation?: {
     slowModeSeconds: number;
     restrictedWords: string[];
+    messageSendAfter: string | Date | null;
+    messageRetentionSeconds: number;
+    permissions: ChatPermissions;
     canManage: boolean;
   };
   unread: number;
@@ -77,6 +91,9 @@ export interface IChat {
   systemKey?: string;
   slowModeSeconds?: number;
   restrictedWords?: string[];
+  messageSendAfter?: Date | null;
+  messageRetentionSeconds?: number;
+  permissions?: Partial<ChatPermissions>;
   mutedUsers?: Array<{
     user: mongoose.Types.ObjectId | string;
     until: Date;
@@ -98,6 +115,7 @@ export interface IMessage {
   sender: mongoose.Types.ObjectId | string;
   text: string;
   attachment?: ChatAttachment;
+  expiresAt?: Date | null;
   createdOn?: Date;
   updatedAt?: Date;
 }
@@ -145,6 +163,18 @@ const ChatSchema = new Schema<IChat>(
     systemKey: { type: String, trim: true },
     slowModeSeconds: { type: Number, min: 0, max: 86400, default: 0 },
     restrictedWords: { type: [String], default: [] },
+    messageSendAfter: { type: Date, default: null },
+    messageRetentionSeconds: { type: Number, min: 3600, max: 31536000, default: 3600 },
+    permissions: {
+      membersCanMessage: { type: Boolean, default: true },
+      adminsOnlyMessaging: { type: Boolean, default: false },
+      membersCanSendMedia: { type: Boolean, default: true },
+      membersCanEditInfo: { type: Boolean, default: false },
+      membersCanInvite: { type: Boolean, default: true },
+      membersCanUseVoice: { type: Boolean, default: true },
+      isPublic: { type: Boolean, default: false },
+      isDiscoverable: { type: Boolean, default: false },
+    },
     mutedUsers: [{
       user: { type: Schema.Types.ObjectId, ref: "User" },
       until: { type: Date },
@@ -176,6 +206,7 @@ const MessageSchema = new Schema<IMessage>(
     sender: { type: Schema.Types.ObjectId, ref: "User", required: true },
     text: { type: String, default: "", trim: true, maxlength: 4000 },
     attachment: { type: ChatAttachmentSchema, required: false, default: undefined },
+    expiresAt: { type: Date, default: null, index: true },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
 );
@@ -219,8 +250,9 @@ export const ChatModel: Model<IChat> =
 const cachedMessageModel = mongoose.models.Message as Model<IMessage> | undefined;
 const cachedAttachmentPath = cachedMessageModel?.schema.path("attachment") as any;
 const cachedAttachmentIsOptional = cachedAttachmentPath && cachedAttachmentPath.isRequired === false;
+const cachedExpiryPath = cachedMessageModel?.schema.path("expiresAt");
 
-if (cachedMessageModel && !cachedAttachmentIsOptional) {
+if (cachedMessageModel && (!cachedAttachmentIsOptional || !cachedExpiryPath)) {
   delete mongoose.models.Message;
 }
 

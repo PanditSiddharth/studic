@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft, CheckCheck, Download, ExternalLink, FileText, Info, Loader2, Lock, MessageCircle, Send, ShieldCheck, Trash2, X,
+  ArrowLeft, CheckCheck, Clock3, Download, ExternalLink, FileText, Info, Loader2, Lock, MessageCircle, Send, ShieldCheck, Trash2, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,6 +52,9 @@ interface ChatWindowProps {
   currentUserId: string;
   onSend: (text: string, attachment?: ChatAttachment) => Promise<boolean>;
   mediaSettings: { allowMedia: boolean; allowImages: boolean; allowDocuments: boolean; allowVoiceCalls: boolean };
+  allowVoiceCalls: boolean;
+  allowMemberMedia: boolean;
+  allowMemberMessages: boolean;
   onBack: () => void;
   onInfo: () => void;
   canModerate: boolean;
@@ -67,6 +70,9 @@ export default function ChatWindow({
   currentUserId,
   onSend,
   mediaSettings,
+  allowVoiceCalls,
+  allowMemberMedia,
+  allowMemberMessages,
   onBack,
   onInfo,
   canModerate,
@@ -78,6 +84,7 @@ export default function ChatWindow({
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeChatRef = useRef<string | null>(null);
   const days = groupMessagesByDay(messages);
+  const [sendWaitSeconds, setSendWaitSeconds] = useState(0);
 
   useEffect(() => {
     setDraft("");
@@ -100,6 +107,15 @@ export default function ChatWindow({
     }
   }, [chat?._id, messages]);
 
+  useEffect(() => {
+    const sendAfter = chat?.moderation?.messageSendAfter;
+    const update = () => setSendWaitSeconds(sendAfter ? Math.max(0, Math.ceil((new Date(sendAfter).getTime() - Date.now()) / 1000)) : 0);
+    update();
+    if (!sendAfter) return;
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [chat?.moderation?.messageSendAfter]);
+
   const resize = () => {
     const element = textareaRef.current;
     if (!element) return;
@@ -109,7 +125,7 @@ export default function ChatWindow({
 
   const submit = async () => {
     const value = draft.trim();
-    if ((!value && !attachment) || sending || readOnly) return;
+    if ((!value && !attachment) || sending || readOnly || (sendWaitSeconds > 0 && !canModerate)) return;
     const sent = await onSend(value, attachment);
     if (sent) {
       setDraft("");
@@ -148,7 +164,7 @@ export default function ChatWindow({
         >
           <ArrowLeft size={18} />
         </Button>
-        {mediaSettings.allowVoiceCalls ? <VoiceCall chatId={chat._id} currentUserId={currentUserId} /> : null}
+        {mediaSettings.allowVoiceCalls && allowVoiceCalls ? <VoiceCall chatId={chat._id} currentUserId={currentUserId} /> : null}
         <ChatAvatar name={chat.title} image={chat.image} kind={chat.kind} seed={chat._id} className="h-10 w-10" />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
@@ -282,6 +298,17 @@ export default function ChatWindow({
             void submit();
           }}
         >
+          {!allowMemberMessages && !canModerate ? (
+            <div className="mb-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              Only group admins can send messages right now.
+            </div>
+          ) : null}
+          {sendWaitSeconds > 0 && !canModerate && allowMemberMessages ? (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <Clock3 size={14} className="shrink-0" />
+              <span>New members can send messages in <strong>{sendWaitSeconds} seconds</strong>.</span>
+            </div>
+          ) : null}
           {attachment ? (
             <div className="relative mb-2 w-fit max-w-full rounded-xl border bg-muted p-1.5">
               <AttachmentPreview attachment={attachment} compact />
@@ -291,7 +318,7 @@ export default function ChatWindow({
             </div>
           ) : null}
           <div className="flex items-end gap-2">
-            {mediaSettings.allowMedia ? <ChatMediaUpload allowImages={mediaSettings.allowImages} allowDocuments={mediaSettings.allowDocuments} onUploaded={setAttachment} /> : null}
+            {mediaSettings.allowMedia && (canModerate || allowMemberMedia) ? <ChatMediaUpload allowImages={mediaSettings.allowImages} allowDocuments={mediaSettings.allowDocuments} onUploaded={setAttachment} /> : null}
             <Textarea
               ref={textareaRef}
               value={draft}
@@ -314,7 +341,7 @@ export default function ChatWindow({
               type="submit"
               size="icon"
               className="h-10 w-10 shrink-0 rounded-full"
-              disabled={(!draft.trim() && !attachment) || sending}
+              disabled={(!draft.trim() && !attachment) || sending || (!allowMemberMessages && !canModerate) || (sendWaitSeconds > 0 && !canModerate)}
               aria-label="Send message"
             >
               {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}

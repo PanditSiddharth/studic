@@ -283,18 +283,21 @@ export default function ChatWorkspace() {
           loading={loadingChat}
           sending={sending}
           mediaSettings={mediaSettings}
+          allowVoiceCalls={isAdmin || chat?.moderation?.permissions?.membersCanUseVoice !== false}
+          allowMemberMedia={isAdmin || chat?.moderation?.permissions?.membersCanSendMedia !== false}
+          allowMemberMessages={isAdmin || chat?.moderation?.permissions?.membersCanMessage !== false && chat?.moderation?.permissions?.adminsOnlyMessaging !== true}
           readOnly={readOnly}
           currentUserId={currentUserId}
           onSend={handleSend}
           onBack={goBack}
           onInfo={() => setInfoOpen(true)}
-          canModerate={Boolean(chat?.moderation?.canManage)}
+          canModerate={isAdmin || Boolean(chat?.moderation?.canManage)}
           onDelete={(messageId) => void handleDeleteMessage(messageId)}
         />
 
         {chat ? (
           <aside className="hidden min-h-0 border-l xl:block">
-            <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} onUpdated={handleChatUpdated} />
+            <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} isAdmin={isAdmin} onUpdated={handleChatUpdated} onMessagesDeleted={() => void openChat(chat._id)} />
           </aside>
         ) : null}
       </div>
@@ -307,7 +310,7 @@ export default function ChatWorkspace() {
           <DialogDescription className="sr-only">
             Members and details for this conversation
           </DialogDescription>
-          {chat ? <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} onUpdated={handleChatUpdated} /> : null}
+          {chat ? <ChatInfo chat={chat} currentUserId={currentUserId} readOnly={readOnly} isAdmin={isAdmin} onUpdated={handleChatUpdated} onMessagesDeleted={() => void openChat(chat._id)} /> : null}
         </DialogContent>
       </Dialog>
     </div>

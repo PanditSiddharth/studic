@@ -26,6 +26,16 @@ const COMMUNITY_CHAT_NAME = "Studic Community";
 const RESTRICTED_WORD_MUTE_SECONDS = 10 * 60;
 const MAX_VOICE_PARTICIPANTS = 5;
 const VOICE_LEASE_MS = 15_000;
+const defaultGroupPermissions = {
+  membersCanMessage: true,
+  adminsOnlyMessaging: false,
+  membersCanSendMedia: true,
+  membersCanEditInfo: false,
+  membersCanInvite: true,
+  membersCanUseVoice: true,
+  isPublic: false,
+  isDiscoverable: false,
+};
 
 const defaultChatMediaSettings = {
   allowMedia: false,
@@ -60,17 +70,49 @@ export async function getChatMediaSettings() {
 
 export async function cleanupExpiredChatMedia() {
     await connectDB();
+    const expiredMessages = await MessageModel.find({
+      expiresAt: { $ne: null, $lte: new Date() },
+    }).select("chat attachment.url").lean();
+    if (expiredMessages.length) {
+      await deleteExpiredCloudinaryAssets(
+        expiredMessages
+          .map((message: any) => message.attachment?.url)
+          .filter(Boolean)
+          .map((url) => ({ url: String(url) }))
+      );
+      await MessageModel.deleteMany({ _id: { $in: expiredMessages.map((message: any) => message._id) } });
+      const affectedChatIds = Array.from(new Set(expiredMessages.map((message: any) => String(message.chat))));
+      for (const chatId of affectedChatIds) {
+        const latest = await MessageModel.findOne({ chat: chatId }).sort({ createdOn: -1, _id: -1 })
+          .select("text sender createdOn").populate("sender", "name").lean();
+        if (latest) {
+          await ChatModel.updateOne({ _id: chatId }, {
+            $set: {
+              lastMessage: {
+                text: String(latest.text || ""),
+                senderId: latest.sender,
+                senderName: String((latest.sender as any)?.name || "Member"),
+                at: latest.createdOn,
+              },
+              lastMessageAt: latest.createdOn,
+            },
+          });
+        } else {
+          await ChatModel.updateOne({ _id: chatId }, { $unset: { lastMessage: 1 }, $set: { lastMessageAt: null } });
+        }
+      }
+    }
     const expired = await MessageModel.find({
       "attachment.url": { $exists: true },
       "attachment.expiresAt": { $ne: null, $lte: new Date() },
     }).select("attachment.url").lean();
-    if (!expired.length) return { deleted: 0 };
+    if (!expired.length) return { deleted: expiredMessages.length };
     await deleteExpiredCloudinaryAssets(expired.map((message: any) => ({ url: String(message.attachment.url) })));
     const result = await MessageModel.updateMany(
       { _id: { $in: expired.map((message: any) => message._id) } },
       { $unset: { attachment: 1 } }
     );
-    return { deleted: result.modifiedCount || 0 };
+    return { deleted: (result.modifiedCount || 0) + expiredMessages.length };
 }
 
 async function ensureCommunityChat(userId: string) {
@@ -192,6 +234,9 @@ const toChatSummary = (
     moderation: chat?.kind === "group" ? {
       slowModeSeconds: Number(chat?.slowModeSeconds || 0),
       restrictedWords: canManageChat(chat, viewer) ? (chat?.restrictedWords || []) : [],
+      messageSendAfter: chat?.messageSendAfter || null,
+      messageRetentionSeconds: Number(chat?.messageRetentionSeconds || 3600),
+      permissions: { ...defaultGroupPermissions, ...(chat?.permissions || {}) },
       canManage: canManageChat(chat, viewer),
     } : undefined,
     unread: state.unread,
@@ -403,10 +448,20 @@ export async function sendChatMessage(input: {
       if (attachment.kind === "document" && attachment.mimeType.startsWith("image/")) return { error: "Invalid document type" };
     }
     const chat = await ChatModel.findById(input.chatId)
-      .select("kind participants lastMessageAt slowModeSeconds restrictedWords mutedUsers admins createdBy");
+      .select("kind participants lastMessageAt slowModeSeconds restrictedWords mutedUsers admins createdBy messageSendAfter messageRetentionSeconds permissions");
     if (!chat) return { error: "Chat not found" };
     if (!isParticipant(chat, String(user._id))) {
       return { error: "Only members can send messages in this chat" };
+    }
+    const groupPermissions = { ...defaultGroupPermissions, ...(chat.permissions || {}) };
+    const chatManager = canManageChat(chat, user);
+    if (chat.kind === "group" && !chatManager) {
+      if (!groupPermissions.membersCanMessage || groupPermissions.adminsOnlyMessaging) {
+        return { error: "Only group admins can send messages right now" };
+      }
+      if (attachment && !groupPermissions.membersCanSendMedia) {
+        return { error: "Only group admins can send media or files" };
+      }
     }
     const mute = activeMute(chat, String(user._id));
     if (mute) {
@@ -414,6 +469,10 @@ export async function sendChatMessage(input: {
       return { error: `You are muted for ${seconds} more seconds` };
     }
     if (chat.kind === "group" && !canManageChat(chat, user)) {
+      if (chat.messageSendAfter && new Date(chat.messageSendAfter).getTime() > Date.now()) {
+        const remaining = Math.ceil((new Date(chat.messageSendAfter).getTime() - Date.now()) / 1000);
+        return { error: `New members can send messages in ${remaining} seconds` };
+      }
       const cooldown = Number(chat.slowModeSeconds || 0);
       if (cooldown && chat.lastMessageAt) {
         const remaining = cooldown - Math.floor((Date.now() - new Date(chat.lastMessageAt).getTime()) / 1000);
@@ -436,6 +495,9 @@ export async function sendChatMessage(input: {
       // renders the attachment itself, while this fallback supports older
       // cached Mongoose models that still require text.
       text: text || `Attachment: ${attachment?.name || "File"}`,
+      ...(chat.kind === "group" ? {
+        expiresAt: new Date(Date.now() + Math.max(3600, Number(chat.messageRetentionSeconds || 3600)) * 1000),
+      } : {}),
       ...(attachment ? { attachment: {
         ...attachment,
         expiresAt: media?.retentionDays ? new Date(Date.now() + media.retentionDays * 86400000) : null,
@@ -483,6 +545,18 @@ export async function updateChatModeration(input: {
   chatId: string;
   slowModeSeconds: number;
   restrictedWords: string[];
+  messageSendAfter?: string | null;
+  messageRetentionHours?: number;
+  permissions?: Partial<{
+    membersCanMessage: boolean;
+    adminsOnlyMessaging: boolean;
+    membersCanSendMedia: boolean;
+    membersCanEditInfo: boolean;
+    membersCanInvite: boolean;
+    membersCanUseVoice: boolean;
+    isPublic: boolean;
+    isDiscoverable: boolean;
+  }>;
 }) {
   const user = await getSessionUser();
   if (!user?._id) return { error: "Sign in to manage this group" };
@@ -493,12 +567,20 @@ export async function updateChatModeration(input: {
       .map((word) => String(word).trim().toLocaleLowerCase())
       .filter((word) => word.length >= 2 && word.length <= 60)
   )).slice(0, 100);
+  const messageSendAfter = input.messageSendAfter ? new Date(input.messageSendAfter) : null;
+  if (messageSendAfter && Number.isNaN(messageSendAfter.getTime())) return { error: "Choose a valid message start time" };
+  const messageRetentionHours = Math.min(24 * 365, Math.max(1, Math.floor(Number(input.messageRetentionHours) || 1)));
   try {
     await connectDB();
-    const chat = await ChatModel.findById(input.chatId).select("kind createdBy admins");
+    const chat = await ChatModel.findById(input.chatId).select("kind createdBy admins messageSendAfter messageRetentionSeconds");
     if (!chat || chat.kind !== "group") return { error: "Group not found" };
     if (!canManageChat(chat, user)) return { error: "Only the group owner or an admin can change restrictions" };
-    await ChatModel.updateOne({ _id: chat._id }, { $set: { slowModeSeconds, restrictedWords } });
+    const permissions = { ...defaultGroupPermissions, ...(input.permissions || {}) };
+    if (permissions.adminsOnlyMessaging) permissions.membersCanMessage = true;
+    await ChatModel.updateOne(
+      { _id: chat._id },
+      { $set: { slowModeSeconds, restrictedWords, messageSendAfter, messageRetentionSeconds: messageRetentionHours * 3600, permissions } }
+    );
     return { success: true };
   } catch (error: any) {
     console.error("Error updating chat moderation", error);
@@ -524,9 +606,9 @@ export async function updateChatDetails(input: {
 
     try {
       await connectDB();
-      const chat = await ChatModel.findById(input.chatId).select("kind createdBy admins");
+      const chat = await ChatModel.findById(input.chatId).select("kind createdBy admins permissions");
       if (!chat || chat.kind !== "group") return { error: "Group not found" };
-      if (!canManageChat(chat, user)) return { error: "Only the group owner or an admin can edit this group" };
+      if (!canManageChat(chat, user) && !(chat.permissions as any)?.membersCanEditInfo) return { error: "Only the group owner or an admin can edit this group" };
       await ChatModel.updateOne({ _id: chat._id }, { $set: { name, description, image } });
       return { success: true };
     } catch (error: any) {
@@ -559,6 +641,33 @@ export async function muteChatUser(input: { chatId: string; userId: string; seco
   }
 }
 
+export async function removeChatUser(input: { chatId: string; userId: string }) {
+  const user = await getSessionUser();
+  if (!user?._id || !mongoose.isValidObjectId(input?.chatId) || !mongoose.isValidObjectId(input?.userId)) {
+    return { error: "Invalid member management request" };
+  }
+  try {
+    await connectDB();
+    const chat = await ChatModel.findById(input.chatId).select("kind systemKey createdBy admins participants");
+    if (!chat || chat.kind !== "group") return { error: "Group not found" };
+    if (chat.systemKey === COMMUNITY_CHAT_KEY) return { error: "Members cannot be removed from the community chat" };
+    if (!canManageChat(chat, user)) return { error: "Only the group owner or an admin can remove members" };
+    if (String(user._id) === input.userId) return { error: "You cannot remove yourself" };
+    if ((chat.admins || []).some((admin: any) => idOf(admin) === input.userId)) {
+      return { error: "Remove the member's group admin access first" };
+    }
+    if (!isParticipant(chat, input.userId)) return { error: "User is not a group member" };
+    await ChatModel.updateOne(
+      { _id: chat._id },
+      { $pull: { participants: input.userId, mutedUsers: { user: input.userId } } }
+    );
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error removing chat user", error);
+    return { error: error?.message || "Could not remove group member" };
+  }
+}
+
 export async function deleteChatMessage(messageId: string) {
   const user = await getSessionUser();
   if (!user?._id || !mongoose.isValidObjectId(messageId)) return { error: "Invalid message" };
@@ -575,6 +684,86 @@ export async function deleteChatMessage(messageId: string) {
   } catch (error: any) {
     console.error("Error deleting chat message", error);
     return { error: error?.message || "Could not delete message" };
+  }
+}
+
+export async function deleteChatMessagesByRange(input: {
+  chatId: string;
+  senderId?: string;
+  from: string;
+  to: string;
+}) {
+  const user = await getSessionUser();
+  if (!user?._id) return { error: "Sign in to manage chat messages" };
+  if (user.role !== "admin") return { error: "Only a site administrator can delete messages in bulk" };
+  if (!mongoose.isValidObjectId(input?.chatId)) return { error: "Chat not found" };
+
+  const from = new Date(String(input?.from || ""));
+  const to = new Date(String(input?.to || ""));
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return { error: "Choose a valid start and end time" };
+  }
+  if (from >= to) return { error: "End time must be after the start time" };
+  if (input.senderId && !mongoose.isValidObjectId(input.senderId)) {
+    return { error: "Invalid user selection" };
+  }
+
+  try {
+    await connectDB();
+    const chat = await ChatModel.findById(input.chatId).select("participants");
+    if (!chat) return { error: "Chat not found" };
+    if (input.senderId && !isParticipant(chat, input.senderId)) {
+      return { error: "Selected user is not part of this chat" };
+    }
+
+    const query: Record<string, unknown> = {
+      chat: chat._id,
+      createdOn: { $gte: from, $lte: to },
+    };
+    if (input.senderId) query.sender = input.senderId;
+
+    const messages = await MessageModel.find(query).select("attachment.url").lean();
+    if (!messages.length) return { success: true, deleted: 0 };
+
+    await deleteExpiredCloudinaryAssets(
+      messages
+        .map((message: any) => message.attachment?.url)
+        .filter(Boolean)
+        .map((url) => ({ url: String(url) }))
+    );
+    const result = await MessageModel.deleteMany({ _id: { $in: messages.map((message) => message._id) } });
+    const latest = await MessageModel.findOne({ chat: chat._id })
+      .sort({ createdOn: -1, _id: -1 })
+      .select("text sender createdOn")
+      .populate("sender", "name")
+      .lean();
+
+    if (latest) {
+      await ChatModel.updateOne(
+        { _id: chat._id },
+        {
+          $set: {
+            lastMessage: {
+              text: String(latest.text || ""),
+              senderId: latest.sender,
+              senderName: String((latest.sender as any)?.name || "Member"),
+              at: latest.createdOn,
+            },
+            lastMessageAt: latest.createdOn,
+          },
+        }
+      );
+    } else {
+      await ChatModel.updateOne(
+        { _id: chat._id },
+        { $unset: { lastMessage: 1 }, $set: { lastMessageAt: null } }
+      );
+    }
+
+    return { success: true, deleted: result.deletedCount || 0 };
+  } catch (error: any) {
+    console.error("Error deleting chat messages by range", error);
+    return { error: error?.message || "Could not delete messages" };
   }
 }
 
