@@ -230,9 +230,9 @@ const showcaseGroups = {
     ],
   },
   universities: {
-    eyebrow: "University learning",
-    title: "Learning paths from recognised universities",
-    description: "Explore university programmes and study resources, with a special focus on IGNOU.",
+    eyebrow: "University ecosystem",
+    title: "Institutions that shape learning",
+    description: "A showcase of recognised universities and learning platforms. Studic courses are organised by subject, not restricted to a single university.",
     items: [
       { name: "IGNOU", detail: "Open & distance learning", mark: "IGNOU", tone: "bg-[#0B5CAB]/10 text-[#0B5CAB]", featured: true },
       { name: "University of Delhi", detail: "Undergraduate & postgraduate", mark: "DU", tone: "bg-[#8B1E2D]/10 text-[#8B1E2D]" },
@@ -274,8 +274,8 @@ function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
             What would you like to <span className="text-primary">learn?</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-            Explore popular programming languages, modern technologies and university learning paths.
-            Find a subject that sparks your curiosity.
+            Explore popular programming languages, modern technologies and recognised universities.
+            Discover what you can learn, wherever you study.
           </p>
         </div>
 
@@ -327,43 +327,69 @@ function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
             transition={{ duration: 0.28 }}
             className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
           >
-            {items.map((item) => (
-              <Link
-                href={activeTab === "universities" && item.name === "IGNOU" ? "/courses?search=IGNOU" : `/courses?search=${encodeURIComponent(item.name)}`}
-                key={item.name}
-                className="group relative flex min-h-[112px] items-center gap-3 rounded-2xl border bg-card/80 p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/[0.06] sm:min-h-[120px] sm:gap-4 sm:p-4"
-              >
-                <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-tight sm:h-14 sm:w-14", item.tone)}>
-                  {item.mark}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-sm font-semibold leading-snug group-hover:text-primary sm:text-base">{item.name}</span>
-                    {"featured" in item && item.featured && (
-                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">Focus</span>
-                    )}
+            {items.map((item) => {
+              const cardContent = (
+                <>
+                  <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-tight sm:h-14 sm:w-14", item.tone)}>
+                    {item.mark}
                   </span>
-                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">{item.detail}</span>
-                </span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
-              </Link>
-            ))}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className={cn("text-sm font-semibold leading-snug sm:text-base", activeTab !== "universities" && "group-hover:text-primary")}>{item.name}</span>
+                      {"featured" in item && item.featured && (
+                        <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">Focus</span>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">{item.detail}</span>
+                  </span>
+                  {activeTab !== "universities" && (
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+                  )}
+                </>
+              )
+              const cardClassName = cn(
+                "relative flex min-h-[112px] items-center gap-3 rounded-2xl border bg-card/80 p-3.5 shadow-sm sm:min-h-[120px] sm:gap-4 sm:p-4",
+                activeTab === "universities"
+                  ? "cursor-default"
+                  : "group transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/[0.06]"
+              )
+
+              return activeTab === "universities" ? (
+                <div key={item.name} className={cardClassName}>
+                  {cardContent}
+                </div>
+              ) : (
+                <Link
+                  key={item.name}
+                  href={`/courses?search=${encodeURIComponent(item.name)}`}
+                  className={cardClassName}
+                >
+                  {cardContent}
+                </Link>
+              )
+            })}
           </motion.div>
         </div>
 
         <div className="mt-7 flex flex-col items-center justify-between gap-4 border-t pt-6 sm:flex-row">
-          <p className="text-xs text-muted-foreground">New subjects and learning paths are added as Studic grows.</p>
+          <p className="text-xs text-muted-foreground">
+            {activeTab === "universities"
+              ? "University names are shown for context. Courses on Studic are organised around subjects and skills."
+              : "New subjects and learning paths are added as Studic grows."}
+          </p>
           <div className="flex flex-wrap justify-center gap-2">
             {group.items.length > 8 && (
               <Button type="button" variant="outline" size="sm" onClick={() => setShowAll((value) => !value)}>
                 {showAll ? "Show less" : "Explore all"} <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Button>
             )}
-            <Button asChild size="sm" className="gap-2">
-              <Link href={activeTab === "universities" ? "/courses?search=IGNOU" : "/courses"}>
-                Explore courses <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
+            {activeTab !== "universities" && (
+              <Button asChild size="sm" className="gap-2">
+                <Link href="/courses">
+                  Explore courses <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
