@@ -287,7 +287,7 @@ function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
                 key={id}
                 type="button"
                 role="tab"
-                id={\`showcase-tab-\${id}\`}
+                id={`showcase-tab-${id}`}
                 aria-selected={selected}
                 aria-controls="showcase-panel"
                 onClick={() => { setActiveTab(id); setShowAll(false) }}
@@ -308,7 +308,7 @@ function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
         <div
           id="showcase-panel"
           role="tabpanel"
-          aria-labelledby={\`showcase-tab-\${activeTab}\`}
+          aria-labelledby={`showcase-tab-${activeTab}`}
           className="mt-9"
         >
           <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
@@ -329,7 +329,7 @@ function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
           >
             {items.map((item) => (
               <Link
-                href={activeTab === "universities" && item.name === "IGNOU" ? "/courses?search=IGNOU" : \`/courses?search=\${encodeURIComponent(item.name)}\`}
+                href={activeTab === "universities" && item.name === "IGNOU" ? "/courses?search=IGNOU" : `/courses?search=${encodeURIComponent(item.name)}`}
                 key={item.name}
                 className="group relative flex min-h-[112px] items-center gap-3 rounded-2xl border bg-card/80 p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/[0.06] sm:min-h-[120px] sm:gap-4 sm:p-4"
               >
