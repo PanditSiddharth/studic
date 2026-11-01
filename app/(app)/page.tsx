@@ -17,6 +17,12 @@ import ProductCard from "@/components/product/product-card"
 import { useDataStore } from "@/store"
 import { ArrowRight, BookOpen, CheckCircle2, Code2, FileText, GraduationCap, Layers3, Mail, Package, Search, Sparkles } from "lucide-react"
 import { cn } from "@/modals/utils"
+import type { IconType } from "react-icons"
+import {
+  SiPython, SiJavascript, SiTypescript, SiJava, SiC, SiCplusplus, SiCsharp, SiRust, SiGo, SiPhp, SiKotlin,
+  SiReact, SiNextdotjs, SiNodedotjs, SiExpress, SiMongodb, SiPostgresql, SiDocker, SiGit, SiLinux, SiAmazonaws,
+  SiTailwindcss, SiOpenai,
+} from "react-icons/si"
 
 export default function HomePage() {
   const router = useRouter()
@@ -246,6 +252,35 @@ const showcaseGroups = {
   },
 } as const
 
+const languageIcons: Record<string, IconType> = {
+  Python: SiPython,
+  JavaScript: SiJavascript,
+  TypeScript: SiTypescript,
+  Java: SiJava,
+  C: SiC,
+  "C++": SiCplusplus,
+  "C#": SiCsharp,
+  Rust: SiRust,
+  Go: SiGo,
+  PHP: SiPhp,
+  Kotlin: SiKotlin,
+}
+
+const technologyIcons: Record<string, IconType> = {
+  React: SiReact,
+  "Next.js": SiNextdotjs,
+  "Node.js": SiNodedotjs,
+  Express: SiExpress,
+  MongoDB: SiMongodb,
+  PostgreSQL: SiPostgresql,
+  Docker: SiDocker,
+  "Git & GitHub": SiGit,
+  Linux: SiLinux,
+  AWS: SiAmazonaws,
+  "Tailwind CSS": SiTailwindcss,
+  "AI & ML": SiOpenai,
+}
+
 type ShowcaseTab = keyof typeof showcaseGroups
 
 function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
@@ -328,10 +363,15 @@ function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
             className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
           >
             {items.map((item) => {
+              const BrandIcon = activeTab === "programming"
+                ? languageIcons[item.name]
+                : activeTab === "technologies"
+                  ? technologyIcons[item.name]
+                  : undefined
               const cardContent = (
                 <>
                   <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-tight sm:h-14 sm:w-14", item.tone)}>
-                    {item.mark}
+                    {BrandIcon ? <BrandIcon size={28} aria-hidden="true" /> : item.mark}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-1.5">
