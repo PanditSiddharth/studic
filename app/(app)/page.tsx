@@ -15,7 +15,7 @@ import { getCourses } from "@/server-functions/course"
 import { getPublishedProducts } from "@/server-functions/product"
 import ProductCard from "@/components/product/product-card"
 import { useDataStore } from "@/store"
-import { ArrowRight, BookOpen, CheckCircle2, FileText, Mail, Package, Search, Sparkles } from "lucide-react"
+import { ArrowRight, BookOpen, CheckCircle2, Code2, FileText, GraduationCap, Layers3, Mail, Package, Search, Sparkles } from "lucide-react"
 import { cn } from "@/modals/utils"
 
 export default function HomePage() {
@@ -125,6 +125,8 @@ export default function HomePage() {
           <Value icon={Package} title="Take it with you" text="Keep useful notes, templates and downloads in your library." />
         </motion.section>
 
+        <LearningShowcase reduceMotion={!!reduceMotion} />
+
         <Section eyebrow="Start learning" title="Featured courses" description="Build useful skills with focused, practical learning paths." actionHref="/courses" actionText="View all courses">
           <motion.div initial="hidden" whileInView="show" viewport={{ once: true, margin: "-60px" }} variants={stagger} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {coursesStore.data.map((course) => (
@@ -185,6 +187,187 @@ export default function HomePage() {
         </section>
       </main>
     </div>
+  )
+}
+
+const showcaseGroups = {
+  programming: {
+    eyebrow: "Languages & foundations",
+    title: "Find your next programming language",
+    description: "From your first line of code to building production-ready applications.",
+    items: [
+      { name: "Python", detail: "Beginner to advanced", mark: "Py", tone: "bg-[#3776AB]/10 text-[#3776AB]" },
+      { name: "JavaScript", detail: "Web development", mark: "JS", tone: "bg-[#F7DF1E]/20 text-[#A88700]" },
+      { name: "TypeScript", detail: "Typed JavaScript", mark: "TS", tone: "bg-[#3178C6]/10 text-[#3178C6]" },
+      { name: "Java", detail: "OOP & application development", mark: "Ja", tone: "bg-[#E76F00]/10 text-[#E76F00]" },
+      { name: "C", detail: "Programming fundamentals", mark: "C", tone: "bg-[#5C6BC0]/10 text-[#5C6BC0]" },
+      { name: "C++", detail: "Data structures & algorithms", mark: "C++", tone: "bg-[#00599C]/10 text-[#00599C]" },
+      { name: "C#", detail: ".NET development", mark: "C#", tone: "bg-[#68217A]/10 text-[#68217A]" },
+      { name: "Rust", detail: "Systems programming", mark: "Rs", tone: "bg-[#CE422B]/10 text-[#CE422B]" },
+      { name: "Go", detail: "Cloud & backend", mark: "Go", tone: "bg-[#00ADD8]/10 text-[#0099BE]" },
+      { name: "PHP", detail: "Server-side web", mark: "Php", tone: "bg-[#777BB4]/10 text-[#777BB4]" },
+      { name: "Kotlin", detail: "Modern Android", mark: "Kt", tone: "bg-[#7F52FF]/10 text-[#7F52FF]" },
+      { name: "SQL", detail: "Databases & querying", mark: "SQL", tone: "bg-[#4479A1]/10 text-[#4479A1]" },
+    ],
+  },
+  technologies: {
+    eyebrow: "Tools & ecosystems",
+    title: "Explore the technologies behind real products",
+    description: "Frameworks, developer tools, databases and platforms worth learning.",
+    items: [
+      { name: "React", detail: "Frontend UI library", mark: "Re", tone: "bg-[#61DAFB]/15 text-[#0891B2]" },
+      { name: "Next.js", detail: "Full-stack React framework", mark: "N", tone: "bg-foreground/10 text-foreground" },
+      { name: "Node.js", detail: "JavaScript runtime", mark: "Nd", tone: "bg-[#5FA04E]/10 text-[#438A35]" },
+      { name: "Express", detail: "Backend APIs", mark: "Ex", tone: "bg-foreground/10 text-foreground" },
+      { name: "MongoDB", detail: "Document database", mark: "Mg", tone: "bg-[#47A248]/10 text-[#47A248]" },
+      { name: "PostgreSQL", detail: "Relational database", mark: "Pg", tone: "bg-[#4169E1]/10 text-[#4169E1]" },
+      { name: "Docker", detail: "Containers & deployment", mark: "Dk", tone: "bg-[#2496ED]/10 text-[#2496ED]" },
+      { name: "Git & GitHub", detail: "Version control", mark: "Git", tone: "bg-[#F05032]/10 text-[#F05032]" },
+      { name: "Linux", detail: "Operating systems", mark: "Lx", tone: "bg-[#D4A017]/15 text-[#A67C00]" },
+      { name: "AWS", detail: "Cloud computing", mark: "AWS", tone: "bg-[#FF9900]/10 text-[#C77700]" },
+      { name: "Tailwind CSS", detail: "Utility-first styling", mark: "Tw", tone: "bg-[#06B6D4]/10 text-[#0891B2]" },
+      { name: "AI & ML", detail: "Machine learning basics", mark: "AI", tone: "bg-[#8B5CF6]/10 text-[#8B5CF6]" },
+    ],
+  },
+  universities: {
+    eyebrow: "University learning",
+    title: "Learning paths from recognised universities",
+    description: "Explore university programmes and study resources, with a special focus on IGNOU.",
+    items: [
+      { name: "IGNOU", detail: "Open & distance learning", mark: "IGNOU", tone: "bg-[#0B5CAB]/10 text-[#0B5CAB]", featured: true },
+      { name: "University of Delhi", detail: "Undergraduate & postgraduate", mark: "DU", tone: "bg-[#8B1E2D]/10 text-[#8B1E2D]" },
+      { name: "Amity University", detail: "Online & campus programmes", mark: "AU", tone: "bg-[#C8102E]/10 text-[#C8102E]" },
+      { name: "Jamia Millia Islamia", detail: "University programmes", mark: "JMI", tone: "bg-[#0B6B45]/10 text-[#0B6B45]" },
+      { name: "IITs", detail: "Technology & engineering", mark: "IIT", tone: "bg-[#1E4D8C]/10 text-[#1E4D8C]" },
+      { name: "NPTEL", detail: "Online technical courses", mark: "NPTEL", tone: "bg-[#B22222]/10 text-[#B22222]" },
+      { name: "Swayam", detail: "Online learning platform", mark: "SW", tone: "bg-[#F28C28]/10 text-[#D97706]" },
+      { name: "Dr. B. R. Ambedkar Open University", detail: "Open & distance learning", mark: "BRAOU", tone: "bg-[#315C8C]/10 text-[#315C8C]" },
+    ],
+  },
+} as const
+
+type ShowcaseTab = keyof typeof showcaseGroups
+
+function LearningShowcase({ reduceMotion }: { reduceMotion: boolean }) {
+  const [activeTab, setActiveTab] = useState<ShowcaseTab>("programming")
+  const [showAll, setShowAll] = useState(false)
+  const group = showcaseGroups[activeTab]
+  const items = showAll ? group.items : group.items.slice(0, 8)
+
+  const tabs: { id: ShowcaseTab; label: string; icon: typeof Code2 }[] = [
+    { id: "programming", label: "Programming", icon: Code2 },
+    { id: "technologies", label: "Technologies", icon: Layers3 },
+    { id: "universities", label: "Universities", icon: GraduationCap },
+  ]
+
+  return (
+    <section className="relative overflow-hidden border-y bg-muted/20 py-16 sm:py-20">
+      <div className="pointer-events-none absolute -left-28 top-10 h-72 w-72 rounded-full bg-primary/[0.06] blur-3xl" />
+      <div className="pointer-events-none absolute -right-28 bottom-0 h-72 w-72 rounded-full bg-violet-500/[0.06] blur-3xl" />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <span className="inline-flex items-center gap-2 rounded-full border bg-background/80 px-3 py-1.5 text-xs font-semibold tracking-wide text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            A world of learning, in one place
+          </span>
+          <h2 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+            What would you like to <span className="text-primary">learn?</span>
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+            Explore popular programming languages, modern technologies and university learning paths.
+            Find a subject that sparks your curiosity.
+          </p>
+        </div>
+
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-2" role="tablist" aria-label="Learning categories">
+          {tabs.map(({ id, label, icon: Icon }) => {
+            const selected = activeTab === id
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={\`showcase-tab-\${id}\`}
+                aria-selected={selected}
+                aria-controls="showcase-panel"
+                onClick={() => { setActiveTab(id); setShowAll(false) }}
+                className={cn(
+                  "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-all duration-200",
+                  selected
+                    ? "border-primary bg-primary text-primary-foreground shadow-md shadow-primary/15"
+                    : "border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div
+          id="showcase-panel"
+          role="tabpanel"
+          aria-labelledby={\`showcase-tab-\${activeTab}\`}
+          className="mt-9"
+        >
+          <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">{group.eyebrow}</p>
+              <h3 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{group.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{group.description}</p>
+            </div>
+            <span className="text-xs text-muted-foreground">{group.items.length} topics to explore</span>
+          </div>
+
+          <motion.div
+            key={activeTab + (showAll ? "-all" : "-featured")}
+            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          >
+            {items.map((item) => (
+              <Link
+                href={activeTab === "universities" && item.name === "IGNOU" ? "/courses?search=IGNOU" : \`/courses?search=\${encodeURIComponent(item.name)}\`}
+                key={item.name}
+                className="group relative flex min-h-[112px] items-center gap-3 rounded-2xl border bg-card/80 p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/[0.06] sm:min-h-[120px] sm:gap-4 sm:p-4"
+              >
+                <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-tight sm:h-14 sm:w-14", item.tone)}>
+                  {item.mark}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-sm font-semibold leading-snug group-hover:text-primary sm:text-base">{item.name}</span>
+                    {"featured" in item && item.featured && (
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">Focus</span>
+                    )}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">{item.detail}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
+              </Link>
+            ))}
+          </motion.div>
+        </div>
+
+        <div className="mt-7 flex flex-col items-center justify-between gap-4 border-t pt-6 sm:flex-row">
+          <p className="text-xs text-muted-foreground">New subjects and learning paths are added as Studic grows.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {group.items.length > 8 && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowAll((value) => !value)}>
+                {showAll ? "Show less" : "Explore all"} <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button asChild size="sm" className="gap-2">
+              <Link href={activeTab === "universities" ? "/courses?search=IGNOU" : "/courses"}>
+                Explore courses <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
