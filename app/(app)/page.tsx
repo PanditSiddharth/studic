@@ -19,8 +19,8 @@ import { ArrowRight, BookOpen, CheckCircle2, Code2, FileText, GraduationCap, Lay
 import { cn } from "@/modals/utils"
 import type { IconType } from "react-icons"
 import {
-  SiPython, SiJavascript, SiTypescript, SiJava, SiC, SiCplusplus, SiCsharp, SiRust, SiGo, SiPhp, SiKotlin,
-  SiReact, SiNextdotjs, SiNodedotjs, SiExpress, SiMongodb, SiPostgresql, SiDocker, SiGit, SiLinux, SiAmazonaws,
+  SiPython, SiJavascript, SiTypescript, SiC, SiCplusplus, SiSharp, SiRust, SiGo, SiPhp, SiKotlin,
+  SiReact, SiNextdotjs, SiNodedotjs, SiExpress, SiMongodb, SiPostgresql, SiDocker, SiGit, SiLinux,
   SiTailwindcss, SiOpenai,
 } from "react-icons/si"
 
@@ -256,10 +256,10 @@ const languageIcons: Record<string, IconType> = {
   Python: SiPython,
   JavaScript: SiJavascript,
   TypeScript: SiTypescript,
-  Java: SiJava,
+
   C: SiC,
   "C++": SiCplusplus,
-  "C#": SiCsharp,
+  "C#": SiSharp,
   Rust: SiRust,
   Go: SiGo,
   PHP: SiPhp,
@@ -276,7 +276,7 @@ const technologyIcons: Record<string, IconType> = {
   Docker: SiDocker,
   "Git & GitHub": SiGit,
   Linux: SiLinux,
-  AWS: SiAmazonaws,
+
   "Tailwind CSS": SiTailwindcss,
   "AI & ML": SiOpenai,
 }
