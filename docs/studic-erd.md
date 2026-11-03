@@ -1,18 +1,20 @@
 # Studic — Logical Entity Relationship Diagram
 
-> **Status:** Proposed logical database design for the MCA project synopsis.  
-> This diagram combines the current Studic data model with agreed future requirements. It is not a claim that every proposed entity is already implemented in MongoDB.
+> **Status:** Final proposed logical database design for the MCA project synopsis.  
+> This is the target design based on the agreed Studic requirements. Existing GitHub models may differ until the planned migrations and implementation work are completed.
 
-## Design decisions
+## Final design decisions
 
-- Roles: `student` and `admin`; Owner is an admin-level account with additional permissions. Seller is excluded from the target design.
-- Blog body is Markdown stored in `BLOG.content`. YouTube embeds, images, code blocks, links and formatting remain inside this field; there is no separate Video entity.
-- Students submit blog edits as contributions. Admins review and approve/reject them; students do not directly overwrite published content.
-- Chat supports direct and group conversations. The current implementation stores participants/admins as arrays in Chat, not a separate ConversationMember collection.
-- Product, Course and Blog purchases are represented through OrderItem in the proposed normalized design. The current repository Order model instead has direct optional references to Product/Course/Blog; migration is required before adopting OrderItem.
-- Contribution and OrderItem are proposed entities. The other entities below are based on models found in the repository.
-- Chat attachments remain embedded in Message. ChatSettings controls global media/document/voice-call settings.
-- Analytics records are retained according to the one-year retention policy at the application/job level.
+- **Roles:** only `student` and `admin`. Owner is an admin account with the additional `isOwner` permission. Only Owner can add or remove Admin accounts.
+- **Seller:** removed from the target design. Product has no seller reference; seller-specific user and order fields are excluded.
+- **Blog content:** `BLOG.content` remains a Markdown text field. Text, headings, images, YouTube embeds, code blocks, links and formatting all live in this field. No separate Video entity is needed.
+- **Blog contributions:** students submit proposed blog edits through `CONTRIBUTION`. Admin reviews and approves/rejects the submission. Students do not directly overwrite published blogs.
+- **Orders:** the target design uses `ORDER_ITEM` so one order can contain one or more purchasable items. Each order item must reference exactly one of Product, Course or Blog.
+- **Chat membership:** no separate `CONVERSATION_MEMBER` entity. Direct/group chat membership and chat admins are represented by participant/admin references associated with `CHAT`.
+- **Attachments:** attachment metadata remains embedded in `MESSAGE`; no separate Attachment entity.
+- **Voice calls:** excluded from this ERD. The previous VoiceCall model was only used for testing and is not part of the planned Studic system.
+- **Reviews:** a review targets exactly one Product or Course.
+- **Analytics:** one-year data retention is an application-level scheduled cleanup policy.
 
 ## ER diagram
 
@@ -30,8 +32,9 @@ erDiagram
         string phone
         string image
         string role
-        string status
         boolean isOwner
+        ObjectId adminCreatedBy FK
+        string status
         datetime emailVerified
         datetime lastLoginAt
         datetime createdOn
@@ -151,8 +154,6 @@ erDiagram
         int rating
         string comment
         string status
-        string sellerReply
-        datetime repliedAt
         datetime createdOn
         datetime updatedAt
     }
@@ -224,22 +225,12 @@ erDiagram
         datetime updatedAt
     }
 
-    VOICE_CALL {
-        ObjectId _id PK
-        ObjectId chat FK
-        string participants
-        string signals
-        datetime createdAt
-        datetime updatedAt
-    }
-
     CHAT_SETTINGS {
         ObjectId _id PK
         string key UK
         boolean allowMedia
         boolean allowImages
         boolean allowDocuments
-        boolean allowVoiceCalls
         int retentionDays
         ObjectId updatedBy FK
         datetime createdAt
@@ -274,34 +265,46 @@ erDiagram
         datetime lastUpdated
     }
 
+    %% OWNER AND ADMIN MANAGEMENT
+    USER o|--o{ USER : creates_admin_accounts
+
+    %% CONTENT CREATION AND ORGANIZATION
     USER ||--o{ COURSE : authors
     USER ||--o{ BLOG : authors
     COURSE ||--o{ BLOG : contains
+
+    %% PRODUCT ASSOCIATIONS
     COURSE }o--o{ PRODUCT : linked_to
     BLOG }o--o{ PRODUCT : linked_to
 
+    %% PURCHASES
     USER ||--o{ ORDER : places
     ORDER ||--|{ ORDER_ITEM : contains
     PRODUCT o|--o{ ORDER_ITEM : purchased_as
     COURSE o|--o{ ORDER_ITEM : purchased_as
     BLOG o|--o{ ORDER_ITEM : purchased_as
 
+    %% ENROLLMENTS
     USER ||--o{ ENROLLMENT : enrolls
     COURSE ||--o{ ENROLLMENT : has
     ORDER o|--o{ ENROLLMENT : enables
 
+    %% REVIEWS
     USER ||--o{ REVIEW : writes
     PRODUCT o|--o{ REVIEW : receives
     COURSE o|--o{ REVIEW : receives
 
+    %% BLOG CONTRIBUTIONS
     USER ||--o{ CONTRIBUTION : submits
     BLOG ||--o{ CONTRIBUTION : receives
     USER o|--o{ CONTRIBUTION : reviews
 
+    %% BLOG COMMENTS
     USER ||--o{ COMMENT : writes
     BLOG ||--o{ COMMENT : contains
     COMMENT o|--o{ COMMENT : replies_to
 
+    %% DIRECT AND GROUP CHAT
     USER ||--o{ CHAT : creates
     USER }o--o{ CHAT : participates_in
     USER }o--o{ CHAT : administers
@@ -309,20 +312,42 @@ erDiagram
     USER ||--o{ MESSAGE : sends
     CHAT ||--o{ CHAT_READ : tracks
     USER ||--o{ CHAT_READ : reads
-    CHAT ||--o| VOICE_CALL : hosts
     USER o|--o{ CHAT_SETTINGS : updates
 
+    %% SUPPORT
     USER o|--o{ QUERY : raises
     USER o|--o{ QUERY : assigned_to
+
+    %% ANALYTICS
     USER ||--o{ ANALYTICS : owns_records
 ```
 
-## Implementation notes before schema migration
+## Current repository versus final proposed design
 
-1. Add `isOwner` or an equivalent explicit permission mechanism to User; enforce owner-only admin creation/removal in authorization logic.
-2. Add a Contribution model with immutable submission history and reviewer metadata.
-3. Decide whether to migrate Order to OrderItem. If adopted, enforce that exactly one of product/course/blog is set per item.
-4. Remove Seller role and seller references only after checking and migrating existing user/product/order data and all server functions that read them.
-5. Keep Chat participants/admins as arrays unless a deliberate migration to a separate membership collection is planned.
-6. Preserve the existing Comment, Analytics, ChatRead, VoiceCall, ChatSettings and Query models/relationships.
-7. Reviews must reference exactly one of Product or Course, matching the existing model validation.
+| Area | Current GitHub implementation | Final proposed design |
+|---|---|---|
+| User roles | `student`, `seller`, `admin` | `student`, `admin`; Owner permission via `isOwner` |
+| Product seller reference | Product has `seller` | Remove seller reference |
+| Order seller reference | Order has legacy `seller` field | Remove seller reference |
+| Blog edit workflow | No dedicated contribution model found | Add `CONTRIBUTION` |
+| Order items | Order directly references optional Product/Course/Blog | Add normalized `ORDER_ITEM` |
+| Owner permission | No dedicated owner flag found | Add `isOwner`; owner-only admin management |
+| Chat membership | Chat stores participants/admins arrays | Keep Chat-based membership; no separate ConversationMember |
+| YouTube videos | No separate Video model | Keep embeds in Markdown `BLOG.content` |
+| Voice calls | VoiceCall model exists for testing | Exclude from planned system |
+| Comments | BlogData Comment model | Keep Comment |
+| Analytics | Analytics model exists | Keep Analytics; retain one year |
+| Chat settings | ChatSettings model exists | Keep media/document controls; no voice-call setting |
+
+## Migration and implementation notes
+
+1. Update User role validation to allow only `student` and `admin`; add `isOwner` and enforce owner-only admin creation/removal on the server.
+2. Migrate or remove existing seller accounts and Product/Order seller references safely before deleting those fields from schemas and application code.
+3. Add a Contribution model with immutable submission history, proposed Markdown content, status, reviewer and review timestamps.
+4. Add OrderItem and migrate existing Order product/course/blog references. Enforce that exactly one target reference is set for each item.
+5. Keep Chat participants/admins in the Chat model; do not add a ConversationMember collection.
+6. Keep YouTube embeds and all other rich content in Markdown `BLOG.content`; do not create a Video collection.
+7. Exclude VoiceCall and voice-call settings from the target product; remove the test-only model and related routes/UI when cleaning up implementation.
+8. Keep Comment, Analytics, ChatRead, ChatSettings and Query as application entities.
+9. Enforce that each Review references exactly one of Product or Course.
+10. Enforce one-year analytics retention through a scheduled cleanup process.
