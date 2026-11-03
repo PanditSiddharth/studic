@@ -5,7 +5,6 @@ export interface IChatSettings {
   allowMedia: boolean;
   allowImages: boolean;
   allowDocuments: boolean;
-  allowVoiceCalls: boolean;
   retentionDays: number | null;
   updatedBy?: mongoose.Types.ObjectId | string;
   updatedAt?: Date;
@@ -17,7 +16,6 @@ const ChatSettingsSchema = new Schema<IChatSettings>(
     allowMedia: { type: Boolean, default: false },
     allowImages: { type: Boolean, default: false },
     allowDocuments: { type: Boolean, default: false },
-    allowVoiceCalls: { type: Boolean, default: false },
     retentionDays: { type: Number, min: 1, max: 3650, default: 30 },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
