@@ -187,7 +187,6 @@ export async function startCheckout(input: ItemRef): Promise<CheckoutResult> {
             orderId: orderId(),
             status: "paid",
             buyer,
-            seller: product.seller,
             product: product._id,
             itemType: "product",
             amount: 0,
@@ -210,7 +209,6 @@ export async function startCheckout(input: ItemRef): Promise<CheckoutResult> {
         orderId: orderId(),
         status: "pending",
         buyer,
-        seller: product.seller,
         product: product._id,
         itemType: "product",
         amount: product.price,
@@ -279,7 +277,6 @@ export async function startCheckout(input: ItemRef): Promise<CheckoutResult> {
         orderId: orderId(),
         status: "pending",
         buyer,
-        seller: course.author,
         course: course._id,
         itemType: "course",
         amount: course.price,
@@ -488,12 +485,11 @@ export async function getDownloadUrl(productId: string) {
   await connectDB();
 
   try {
-    const product = await ProductModel.findById(productId).select("title fileLink seller");
+    const product = await ProductModel.findById(productId).select("title fileLink");
     if (!product) return { error: "This product could not be found" };
     if (!product.fileLink) return { error: "No file has been attached to this product yet" };
 
-    const isOwner = product.seller && String(product.seller) === String(session._id);
-    if (isAdminUser(session) || isOwner) {
+    if (isAdminUser(session)) {
       return { url: product.fileLink };
     }
 

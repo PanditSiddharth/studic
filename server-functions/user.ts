@@ -4,7 +4,6 @@ import connectDB from "@/connectDB"
 import { IUser, UserModel } from "@/modals/user.model"
 import { randomUUID } from "crypto"
 import { AnalyticsModel, IAnalytics } from "@/modals/analytics.model";
-import { ProductModel } from "@/modals/product.model";
 import { err, userFilter, isSuperAdminEmail } from "@/helpers";
 
 const getQuery = (id: string) => id.startsWith("@") ? { username: id.slice(1) } :
@@ -111,19 +110,6 @@ export const updateUser = async (user: Partial<IUser>) => {
     }
 }
 
-export const getSellers = async () => {
-    const session = await auth()
-    const userId = session?.user?._id || null
-    try {
-        await connectDB()
-        const users = await UserModel.find({ role: "seller", _id: { $ne: userId } })
-        return JSON.stringify(users)
-    } catch (error) {
-        console.error("Error getting users", error);
-        return null
-    }
-}
-
 export const getUserByUsername = async (username: string) => {
     const userlog = await getSessionUser()
     try {
@@ -131,7 +117,7 @@ export const getUserByUsername = async (username: string) => {
         const user = await UserModel.findOne({ username }).lean()
         if (user) {
             if (!userlog || userlog.role != "admin" && username !== userlog?.username) {
-                const { phone, email, ifsc, account, ...publicUser } = user;
+                const { phone, email, ...publicUser } = user;
                 return JSON.parse(JSON.stringify(publicUser))
             }
 
@@ -139,21 +125,6 @@ export const getUserByUsername = async (username: string) => {
             return JSON.parse(JSON.stringify(user))
         }
         return null
-    } catch (error) {
-        console.error("Error getting user", error);
-        return null
-    }
-}
-
-export const getUsernameByProductId = async (productId: string) => {
-    try {
-        await connectDB()
-        const product = await ProductModel.findOne({ _id: productId }).populate<{ seller: { username: string } }>("seller")
-        if (product && product.seller && typeof product.seller === "object" && "username" in product.seller)
-            return product.seller.username
-        else
-            return null
-
     } catch (error) {
         console.error("Error getting user", error);
         return null
@@ -205,9 +176,7 @@ export async function getUsersFromServer(skipPageData: SkipPageDataProp): Promis
                 .skip(skipPageData.skip).limit(skipPageData.postsPerPage).lean() as Array<Record<string, any>>;
         }
 
-
         users = await Promise.all(users.map(async user => {
-            user.products = await ProductModel.countDocuments({ seller: user._id })
             user.analytics = user?.analytics && typeof user.analytics === "object" && "_doc" in user.analytics
                 ? user.analytics._doc
                 : user.analytics
@@ -215,9 +184,7 @@ export async function getUsersFromServer(skipPageData: SkipPageDataProp): Promis
             if (currentUser?.role != "admin") {
                 delete user.phone
                 delete user.email
-                delete user.ifsc
-                delete user.account
-                delete user.anlytics
+                delete user.analytics
             }
             return user
         }))

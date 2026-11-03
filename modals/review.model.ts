@@ -10,8 +10,6 @@ export interface IReview {
   rating: number;
   comment: string;
   status?: ReviewStatus;
-  sellerReply?: string;
-  repliedAt?: Date;
   createdOn?: Date;
   updatedAt?: Date;
 }
@@ -24,8 +22,6 @@ const ReviewSchema = new Schema<IReview>(
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, required: true, trim: true, maxlength: 3000 },
     status: { type: String, enum: ["pending", "published", "hidden"], default: "published", index: true },
-    sellerReply: { type: String, maxlength: 3000 },
-    repliedAt: { type: Date },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
 );

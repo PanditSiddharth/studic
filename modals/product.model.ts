@@ -13,7 +13,6 @@ export interface IProduct {
   filePublicId?: string;
   tags: string[];
   fileLink?: string;
-  seller?: string;
   status?: ProductStatus;
   currency?: string;
   fileName?: string;
@@ -37,7 +36,6 @@ export const ProductSchema = new Schema<IProduct>(
     thumbnailPublicId: { type: String, trim: true },
     filePublicId: { type: String, trim: true },
     fileLink: { type: String },
-    seller: { type: Schema.Types.ObjectId, ref: "User", index: true },
     status: { type: String, enum: ["draft", "published", "archived"], default: "draft", index: true },
     fileName: { type: String, trim: true },
     fileSize: { type: Number, min: 0 },

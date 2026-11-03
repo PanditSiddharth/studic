@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity, BookOpen, Boxes, FileText, GraduationCap, LayoutDashboard,
+  Activity, BookOpen, Boxes, FileText, GitPullRequest, GraduationCap, LayoutDashboard,
   MessageSquare, Package, PlusCircle, ShoppingCart, Star, Users,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -21,7 +21,8 @@ const groups = [
     { label: "Create content", href: "/admin/add-course", icon: PlusCircle },
   ]},
   { title: "Platform", items: [
-    { label: "Users & sellers", href: "/admin/users", icon: Users },
+    { label: "Users", href: "/admin/users", icon: Users },
+    { label: "Contributions", href: "/admin/contributions", icon: GitPullRequest },
     { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { label: "Enrollments", href: "/admin/enrollments", icon: BookOpen },
     { label: "Reviews", href: "/admin/reviews", icon: Star },

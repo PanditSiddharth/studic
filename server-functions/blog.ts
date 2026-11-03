@@ -62,7 +62,21 @@ export interface BlogResult extends Partial<IBlog> {
     access?: BlogAccessState;
     accessCourse?: BlogCourseSummary;
     relatedBlogs?: Pick<IBlog, "_id" | "title" | "slug" | "thumbnail" | "description">[];
+    /** Students whose approved edits are visible on this article. */
+    contributors?: { _id: string; name?: string; username?: string; image?: string }[];
+    /** Signed-in state, so the page can offer "suggest an edit". */
+    signedIn?: boolean;
 }
+
+const contributorRows = (value: any) =>
+    Array.isArray(value)
+        ? value.map((item: any) => ({
+            _id: String(item?._id || ""),
+            name: item?.name,
+            username: item?.username,
+            image: item?.image,
+        })).filter((item: any) => item._id)
+        : [];
 
 export async function getBlog(opt: GetBlogOptions = {}): Promise<BlogResult | { error: string }> {
     if (!opt?.slug && !opt?._id)
@@ -94,6 +108,10 @@ export async function getBlog(opt: GetBlogOptions = {}): Promise<BlogResult | { 
             blog = await BlogModel.findOne(query) as IBlog;
 
         if (!blog) return { error: "No blog found" }
+
+        // Students whose edits were approved show as contributors on the article.
+        await blog.populate("contributors", "name username image");
+        const contributors = contributorRows(blog.contributors);
 
         // Private and draft articles are invisible everywhere, including direct
         // links. Only administrators can preview them (e.g. from the editor).
@@ -135,11 +153,13 @@ export async function getBlog(opt: GetBlogOptions = {}): Promise<BlogResult | { 
                     access,
                     accessCourse,
                     relatedBlogs,
+                    contributors,
+                    signedIn: Boolean(user?._id),
                 }));
             }
         }
 
-        return JSON.parse(JSON.stringify({ ...result, accessCourse, relatedBlogs }));
+        return JSON.parse(JSON.stringify({ ...result, accessCourse, relatedBlogs, contributors, signedIn: Boolean(user?._id) }));
     } catch (error: any) {
         console.error(error);
         return { error: error?.message || "Could not load this blog" };

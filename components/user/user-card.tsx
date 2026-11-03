@@ -58,10 +58,9 @@ const UserCard = ({ user, username, options }: { user: IUser, username?: string,
               @ {user.username}
             </CardDescription>
             <CardDescription className="text-xs min-h-5 line-clamp-2">
-            
-             Products  {(user as {products: number} & IUser)?.products?.toString()}
+              {user.about || "Studic member"}
             </CardDescription>
-        <Link href={`/@${user.username}/products`} className=" text-blue-600">
+        <Link href={`/@${user.username}`} className=" text-blue-600">
             View Profile
         </Link>
         </div>

@@ -72,7 +72,6 @@ export default function AddProductForm({ initialValue }: { initialValue?: IProdu
       const payload = productFilter({
         ...data,
         _id: isEditing ? initialValue?._id : undefined,
-        seller: initialValue?.seller,
       });
       const result = await addOrUpdateProducts(payload);
       const failure = getActionError(result);

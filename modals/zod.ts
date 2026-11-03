@@ -37,12 +37,10 @@ export const userSettingsSchema = z.object({
   name: z.string().trim().min(1).max(100),
   username: z.string().trim().min(2).max(30).regex(/^[A-Za-z0-9_-]+$/),
   about: z.string().max(500).optional(),
-  role: z.enum(["student", "seller", "admin"]),
+  role: z.enum(["student", "admin"]),
   status: z.enum(["active", "suspended", "deleted"]).optional(),
   image: z.string().optional(),
   phone: z.union([z.string(), z.number()]).optional(),
-  account: z.string().optional(),
-  ifsc: z.string().optional(),
 });
 
 export const ZodUserSchema = z.object({
@@ -51,7 +49,7 @@ export const ZodUserSchema = z.object({
   email: z.string().trim().email(),
   phone: z.union([z.string(), z.number()]).optional(),
   image: z.string().url().or(z.literal("")),
-  role: z.enum(["student", "seller", "admin"]),
+  role: z.enum(["student", "admin"]),
   status: z.enum(["active", "suspended", "deleted"]).optional(),
   about: z.string().max(500).optional(),
 });
@@ -66,7 +64,6 @@ export const ZodProductScema = z.object({
   fileLink: z.string().url("Enter a valid file URL").or(z.literal("")).optional(),
   slug: slugSchema,
   status: z.enum(["draft", "published", "archived"]).optional(),
-  seller: z.string().optional(),
   fileName: z.string().optional(),
   fileSize: z.number().nonnegative().optional(),
   mimeType: z.string().optional(),

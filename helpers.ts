@@ -95,12 +95,12 @@ export const productFilter = (product: any = {}, str?: any): Partial<IProduct> =
     }
     const {
         _id, slug, title, price, description, thumbnail, tags, fileLink,
-        publishedAt, status, currency, seller, fileName, fileSize, mimeType,
+        publishedAt, status, currency, fileName, fileSize, mimeType,
         downloadLimit, createdOn, updatedAt
     }: Partial<IProduct> = copy;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, price, description, thumbnail, tags,
-        fileLink, publishedAt, status, currency, seller: plainId(seller), fileName,
+        fileLink, publishedAt, status, currency, fileName,
         fileSize, mimeType, downloadLimit, createdOn, updatedAt
     }));
 };

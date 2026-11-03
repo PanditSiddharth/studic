@@ -12,6 +12,9 @@ import {
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
 import { getBlog, type BlogAccessState, type BlogCourseSummary, type BlogResult } from "@/server-functions/blog";
+import { getMyArticleContribution } from "@/server-functions/contribution";
+import SuggestEditDialog from "@/components/blog/suggest-edit-dialog";
+import ArticleContributorsCard, { ContributorLine } from "@/components/blog/article-contributors";
 import { cleanArticleContent } from "@/modals/utils";
 import "@/components/themes/codetheme.css";
 
@@ -51,6 +54,7 @@ export default function BlogArticle({ params }: { params: Params }) {
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [myContribution, setMyContribution] = useState<{ status?: string; submittedAt?: string | Date; reviewComment?: string } | null>(null);
 
   // Articles are linked both as /t/<slug> and /t/<category>/<slug>.
   const segments = params?.slug || [];
@@ -80,6 +84,9 @@ export default function BlogArticle({ params }: { params: Params }) {
         setAccess(result.access || null);
         setAccessCourse(result.accessCourse || null);
         setError(null);
+        getMyArticleContribution(String(result._id))
+          .then((mine) => { if (!cancelled) setMyContribution(mine); })
+          .catch(() => { /* the edit button still works without this */ });
       })
       .catch(() => { if (!cancelled) setError("This article could not be loaded"); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -123,6 +130,12 @@ export default function BlogArticle({ params }: { params: Params }) {
         <span>/</span>
         <span className="line-clamp-1 max-w-[70vw] text-foreground">{blog.title}</span>
       </nav>
+
+      {blog._id ? (
+        <div className="mt-3 flex max-w-4xl items-center">
+          <ContributorLine contributors={blog.contributors} />
+        </div>
+      ) : null}
 
       <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-[190px_minmax(0,1fr)_230px] lg:gap-5 xl:grid-cols-[205px_minmax(0,1fr)_250px]">
         {headings.length > 0 ? (
@@ -231,10 +244,23 @@ export default function BlogArticle({ params }: { params: Params }) {
         />
       )}
 
+      {blog._id && !locked ? (
+        <div className="mt-6 flex justify-center text-center">
+          <SuggestEditDialog
+            blogId={String(blog._id)}
+            title={blog.title}
+            content={blog.content}
+            contribution={myContribution}
+            onSubmitted={() => getMyArticleContribution(String(blog._id)).then((mine) => setMyContribution(mine))}
+          />
+        </div>
+      ) : null}
+
         </main>
 
         <aside className="hidden min-w-0 lg:block">
           <div className="hide-scrollbar sticky top-24 max-h-[calc(100vh-7rem)] space-y-5 overflow-y-auto pl-1">
+            <ArticleContributorsCard contributors={blog.contributors} />
             {accessCourse?.slug ? (
               <section>
                 <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Related course</h2>

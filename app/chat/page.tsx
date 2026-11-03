@@ -4,7 +4,7 @@ import ChatWorkspace from "@/components/chat/chat-workspace";
 
 export const metadata: Metadata = {
   title: "Chats · Studic",
-  description: "Message learners, sellers and groups on Studic.",
+  description: "Message learners, mentors and groups on Studic.",
 };
 
 export default function ChatPage() {

@@ -10,6 +10,7 @@ import { OrderModel } from "@/modals/order.model";
 import { EnrollmentModel } from "@/modals/enrollment.model";
 import { ReviewModel } from "@/modals/review.model";
 import { QueryModel } from "@/modals/query.model";
+import { ContributionModel } from "@/modals/contribution.model";
 
 /** Admin-only, database-backed overview. Never return financial/customer details here. */
 export async function getAdminOverview() {
@@ -20,11 +21,10 @@ export async function getAdminOverview() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const [
-    users, sellers, courses, articles, products, orders, paidOrders,
-    enrollments, pendingReviews, openQueries, recentOrders, recentCourses,
+    users, courses, articles, products, orders, paidOrders,
+    enrollments, pendingReviews, openQueries, pendingContributions, recentOrders, recentCourses,
   ] = await Promise.all([
     UserModel.countDocuments({ status: { $ne: "deleted" } }),
-    UserModel.countDocuments({ role: "seller", status: { $ne: "deleted" } }),
     CourseModel.countDocuments(),
     BlogModel.countDocuments(),
     ProductModel.countDocuments(),
@@ -33,6 +33,7 @@ export async function getAdminOverview() {
     EnrollmentModel.countDocuments({ status: "active" }),
     ReviewModel.countDocuments({ status: "pending" }),
     QueryModel.countDocuments({ status: { $in: ["open", "in_progress"] } }),
+    ContributionModel.countDocuments({ status: "pending" }),
     OrderModel.find().sort({ createdOn: -1 }).limit(5).select("orderId status amount currency itemType createdOn").lean(),
     CourseModel.find().sort({ updatedAt: -1 }).limit(5).select("title slug status accessType price updatedAt").lean(),
   ]);
@@ -43,8 +44,8 @@ export async function getAdminOverview() {
   ]);
 
   return JSON.parse(JSON.stringify({
-    stats: { users, sellers, courses, articles, products, orders, activeEnrollments: enrollments,
-      pendingReviews, openQueries, monthlyRevenue: monthlyRevenue[0]?.total ?? 0 },
+    stats: { users, courses, articles, products, orders, activeEnrollments: enrollments,
+      pendingReviews, openQueries, pendingContributions, monthlyRevenue: monthlyRevenue[0]?.total ?? 0 },
     recentOrders, recentCourses,
   }));
 }

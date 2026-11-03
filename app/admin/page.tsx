@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getAdminOverview } from "@/server-functions/admin-overview";
 import {
-  Activity, ArrowUpRight, BookOpen, Boxes, CircleDollarSign, FileText,
-  GraduationCap, MessageSquare, Package, ShoppingCart, Star, Users,
+  Activity, ArrowUpRight, BookOpen, CircleDollarSign, FileText,
+  GitPullRequest, GraduationCap, MessageSquare, Package, ShoppingCart, Star, Users,
 } from "lucide-react";
 
 const money = (value: number) => new Intl.NumberFormat("en-IN", {
@@ -18,14 +18,14 @@ export default async function AdminHomePage() {
 
   const s = result.stats;
   const stats = [
-    { label: "Total users", value: s.users, note: `${s.sellers} sellers`, icon: Users, href: "/admin/users" },
+    { label: "Total users", value: s.users, note: "Students and admins", icon: Users, href: "/admin/users" },
     { label: "Courses", value: s.courses, note: "All course records", icon: GraduationCap, href: "/admin/courses" },
     { label: "Articles", value: s.articles, note: "Reusable learning content", icon: FileText, href: "/admin/blogs" },
     { label: "Products", value: s.products, note: "Digital products", icon: Package, href: "/admin/products" },
     { label: "Monthly revenue", value: money(s.monthlyRevenue), note: "Paid orders this month", icon: CircleDollarSign, href: "/admin/orders" },
     { label: "Orders", value: s.orders, note: "All order records", icon: ShoppingCart, href: "/admin/orders" },
     { label: "Active enrollments", value: s.activeEnrollments, note: "Current course access", icon: BookOpen, href: "/admin/enrollments" },
-    { label: "Needs attention", value: s.pendingReviews + s.openQueries, note: `${s.pendingReviews} reviews · ${s.openQueries} support queries`, icon: Activity, href: "/admin/queries" },
+    { label: "Needs attention", value: s.pendingReviews + s.openQueries + s.pendingContributions, note: `${s.pendingContributions} contributions · ${s.pendingReviews} reviews · ${s.openQueries} support queries`, icon: Activity, href: "/admin/contributions" },
   ];
 
   return (
@@ -91,7 +91,8 @@ export default async function AdminHomePage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: "Articles & products", detail: "Edit learning content and attached downloads", href: "/admin/blogs", icon: FileText },
-            { label: "Users & sellers", detail: "Review accounts and roles", href: "/admin/users", icon: Users },
+            { label: "Users", detail: "Review accounts and roles", href: "/admin/users", icon: Users },
+            { label: "Student contributions", detail: "Review proposed article edits", href: "/admin/contributions", icon: GitPullRequest },
             { label: "Reviews", detail: "Moderate community feedback", href: "/admin/reviews", icon: Star },
             { label: "Support queries", detail: "Respond to submitted questions", href: "/admin/queries", icon: MessageSquare },
           ].map((item) => <Link key={item.label} href={item.href} className="rounded-xl border p-4 hover:border-primary/50 hover:bg-muted/30"><item.icon size={18} className="mb-3 text-primary"/><p className="text-sm font-medium">{item.label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></Link>)}

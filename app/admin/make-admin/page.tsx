@@ -17,7 +17,7 @@ const AdminConversionPage = () => {
     const [verifyResponse, setVerifyResponse] = useState<Partial<IUser>>()
     const handleSubmit = async (e: React.FormEvent) => {
         if (!verifyResponse)
-            return toast.info("Please verify first and write only registered users(as seller) email")
+            return toast.info("Please verify first and write only registered students' emails")
         e.preventDefault();
         setLoading(true);
 

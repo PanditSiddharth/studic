@@ -9,9 +9,8 @@ import rehypeHighlight from "rehype-highlight";
 import { toast } from "react-toastify";
 import {
   ArrowLeft, BadgeCheck, Check, Clock, Copy, Download, FileBox, FileText,
-  Loader2, PackageOpen, ShieldCheck, Tag, UserRound,
+  Loader2, PackageOpen, ShieldCheck, Tag,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import ProductCard, { formatPrice } from "@/components/product/product-card";
 import { getPublishedProduct } from "@/server-functions/product";
@@ -20,9 +19,8 @@ import type { IProduct } from "@/modals/product.model";
 import { cn } from "@/modals/utils";
 import "@/components/themes/codetheme.css";
 
-type Seller = { _id?: string; name?: string; username?: string; image?: string };
 type Access = { signedIn: boolean; owned: boolean; enrolled: boolean; orderStatus: string | null; orderId: string | null; progressPercent: number };
-type DetailData = { product: Partial<IProduct> & { seller?: Seller }; access: Access; related: Partial<IProduct>[] };
+type DetailData = { product: Partial<IProduct>; access: Access; related: Partial<IProduct>[] };
 
 const formatBytes = (bytes?: number) => {
   if (!bytes || bytes <= 0) return null;
@@ -249,21 +247,6 @@ export default function ProductDetail({ slug }: { slug: string }) {
             </Button>
           </div>
 
-          {product.seller?.name && (
-            <div className="rounded-2xl border bg-card p-4">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Published by</p>
-              <div className="mt-2 flex items-center gap-2.5">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={product.seller.image} alt={product.seller.name} />
-                  <AvatarFallback><UserRound size={15} /></AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{product.seller.name}</p>
-                  {product.seller.username && <p className="truncate text-xs text-muted-foreground">@{product.seller.username}</p>}
-                </div>
-              </div>
-            </div>
-          )}
         </aside>
       </div>
 

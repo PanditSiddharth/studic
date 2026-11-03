@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Model } from "mongoose";
 
-export type UserRole = "student" | "seller" | "admin";
+export type UserRole = "student" | "admin";
 export type UserStatus = "active" | "suspended" | "deleted";
 
 export function getId() {
@@ -25,22 +25,11 @@ export interface IUser {
   image?: string;
   role?: UserRole;
   status?: UserStatus;
-  account?: string;
-  ifsc?: string;
   emailVerified?: Date | null;
   lastLoginAt?: Date;
   createdOn?: Date;
   updatedAt?: Date;
 }
-
-const SellerProfileSchema = new Schema(
-  {
-    account: { type: String, trim: true },
-    ifsc: { type: String, trim: true, uppercase: true },
-    payoutEnabled: { type: Boolean, default: false },
-  },
-  { _id: false }
-);
 
 export const UserSchema = new Schema<IUser>(
   {
@@ -60,10 +49,8 @@ export const UserSchema = new Schema<IUser>(
     about: { type: String, trim: true, maxlength: 500 },
     phone: { type: String, trim: true, maxlength: 20 },
     image: { type: String, default: "" },
-    role: { type: String, enum: ["student", "seller", "admin"], default: "student", index: true },
+    role: { type: String, enum: ["student", "admin"], default: "student", index: true },
     status: { type: String, enum: ["active", "suspended", "deleted"], default: "active", index: true },
-    account: { type: String, trim: true, select: false },
-    ifsc: { type: String, trim: true, uppercase: true, select: false },
     emailVerified: { type: Date, default: null },
     lastLoginAt: { type: Date },
   },

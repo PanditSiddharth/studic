@@ -5,6 +5,18 @@ import { BlogModel } from "@/modals/blog.model";
 import { getSessionUser } from "./user";
 import mongoose from "mongoose";
 import { courseFilter, blogFilter, isHiddenBlogStatus, isPaidBlog } from "@/helpers";
+
+const contributorRows = (value: any) =>
+    Array.isArray(value)
+        ? value
+            .map((item: any) => ({
+                _id: String(item?._id || ""),
+                name: item?.name,
+                username: item?.username,
+                image: item?.image,
+            }))
+            .filter((item: any) => item._id)
+        : [];
 import { getItemAccess } from "./library";
 import { cloudinaryReference } from "@/lib/cloudinary";
 
@@ -121,6 +133,12 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
         if (!lesson || !lessonIds.has(String(lesson._id)))
             return { error: "This lesson is not part of the course" };
 
+        // Students whose edits were approved show as contributors on the lesson.
+        await lesson.populate("contributors", "name username image");
+        const contributors = Array.isArray(lesson.contributors)
+            ? lesson.contributors
+            : [];
+
         // A private/draft article stays hidden even when it is attached to a course.
         if (!isAdmin && isHiddenBlogStatus(lesson.status))
             return { error: "This lesson is not available" };
@@ -135,6 +153,7 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
             slug: lesson.slug,
             thumbnail: lesson.thumbnail,
             description: lesson.description,
+            contributors: contributorRows(contributors),
         };
 
         const locked = !isAdmin && (

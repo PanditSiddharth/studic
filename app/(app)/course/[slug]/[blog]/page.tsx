@@ -15,6 +15,9 @@ import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
 import { getCourseLesson } from "@/server-functions/course";
 import { getBlogs } from "@/server-functions/blog";
+import { getMyArticleContribution } from "@/server-functions/contribution";
+import SuggestEditDialog from "@/components/blog/suggest-edit-dialog";
+import ArticleContributorsCard, { ContributorLine } from "@/components/blog/article-contributors";
 import { startCheckout } from "@/server-functions/library";
 import { formatPrice } from "@/components/product/product-card";
 import { cleanArticleContent } from "@/modals/utils";
@@ -33,7 +36,7 @@ type Access = {
   orderId: string | null;
   progressPercent: number;
 };
-type LessonSummary = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string };
+type LessonSummary = { _id?: string; title?: string; slug?: string; thumbnail?: string; description?: string; contributors?: { _id?: string; name?: string; username?: string; image?: string }[] };
 
 function createSlug(title: string) {
   return title.toLowerCase().trim().replace(/[`*_~]/g, "")
@@ -70,6 +73,7 @@ export default function Blog(props: any) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestions>({ blogs: [] });
+  const [myContribution, setMyContribution] = useState<{ status?: string; submittedAt?: string | Date; reviewComment?: string } | null>(null);
   const currentTheme = ["dark", "blue"].includes(
     (theme === "system" ? systemTheme : theme) as string
   ) ? "dark" : "light";
@@ -101,6 +105,12 @@ export default function Blog(props: any) {
         }
         setLocked(false);
         setBlog((result.blog as Partial<IBlog>) ?? null);
+        setMyContribution(null);
+        if (!result.locked && result.lesson?._id) {
+          getMyArticleContribution(String(result.lesson._id))
+            .then((mine) => { if (!cancelled) setMyContribution(mine); })
+            .catch(() => { /* the edit button still works without this */ });
+        }
       })
       .catch(() => {
         if (!cancelled) setError("Unable to load this lesson.");
@@ -306,6 +316,11 @@ export default function Blog(props: any) {
       )}
 
       <main className="min-w-0">
+        {lesson?._id ? (
+          <div className="mb-2 flex max-w-4xl mx-auto items-center px-1">
+            <ContributorLine contributors={lesson.contributors} />
+          </div>
+        ) : null}
         <MarkdownPreview
           data-blog-article=""
           data-color-mode={currentTheme}
@@ -318,6 +333,18 @@ export default function Blog(props: any) {
           className="mx-auto w-full max-w-4xl rounded-xl p-3 sm:p-5 [&_*]:!border-border [&_h1]:!text-2xl sm:[&_h1]:!text-3xl [&_h1]:!leading-tight [&_h1]:!font-bold [&_h2]:!text-xl sm:[&_h2]:!text-2xl [&_h2]:!leading-snug [&_h2]:!font-semibold [&_h3]:!text-lg [&_h3]:!font-semibold [&_p]:!text-sm sm:[&_p]:!text-base [&_p]:!leading-7 [&_li]:!text-sm sm:[&_li]:!text-base [&_li]:!leading-7 [&_blockquote]:!text-sm [&_blockquote]:!leading-6 [&_blockquote]:!border-l-border [&_blockquote]:!text-muted-foreground [&_pre_code]:!bg-transparent [&_pre_code]:!text-inherit [&_code:not(pre_code)]:!bg-muted [&_code:not(pre_code)]:!text-foreground"
           source={cleanArticleContent(blog.content)}
         />
+
+        {lesson?._id ? (
+          <div className="mt-6 flex justify-center text-center">
+            <SuggestEditDialog
+              blogId={String(lesson._id)}
+              title={lesson.title}
+              content={blog?.content}
+              contribution={myContribution}
+              onSubmitted={() => getMyArticleContribution(String(lesson._id)).then((mine) => setMyContribution(mine))}
+            />
+          </div>
+        ) : null}
 
         {(previousLesson || nextLesson) && (
           <nav aria-label="Course lesson navigation" className="mx-auto mt-8 flex w-full max-w-4xl items-stretch justify-between gap-3 border-t border-border pt-6">
@@ -349,6 +376,7 @@ export default function Blog(props: any) {
 
       <aside className="hidden lg:block min-w-0">
         <div className="hide-scrollbar sticky top-24 max-h-[calc(100vh-7rem)] space-y-5 overflow-y-auto pl-1">
+          <ArticleContributorsCard contributors={lesson?.contributors} />
           {suggestions.course && (
             <section>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Related course</h2>

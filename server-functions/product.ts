@@ -46,8 +46,8 @@ export async function getProductsFromServer(options: GetProductOptions): Promise
             });
         
             products = products.map((product) => {
-                const isOwner = user && String(user._id) === String(product.seller);
-                if (!isOwner && user?.role !== "admin") product.fileLink = undefined;
+                // Paid file links stay server-side; only administrators get them here.
+                if (user?.role !== "admin") product.fileLink = undefined;
                 return product;
             });
         return JSON.parse(JSON.stringify({ products, totalProducts }));
@@ -62,7 +62,7 @@ export async function getProductFromServer(productId: string): Promise<IProduct 
         if (!product) return false
         const user = await getSessionUser()
 
-        if (user?.role != "admin" && product.seller != user?._id)
+        if (user?.role != "admin")
             product.fileLink = undefined
 
         return JSON.parse(JSON.stringify(product));
@@ -77,24 +77,20 @@ export async function addOrUpdateProducts(data: Partial<IProduct> | Partial<IPro
     try {
         await connectDB()
         const user = await getSessionUser()
-        if (!user) return { error: "Please Login first" }
+        // Products belong to the site catalogue; only administrators manage them.
+        if (!user || user.role !== "admin") return { error: "Administrator access required" }
         const arrData = Array.isArray(data) ? data : [data]
         const options = { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true };
         const results = await Promise.all(arrData.map(async (productData) => {
             const id = productData._id && mongoose.isValidObjectId(productData._id)
                 ? productData._id
                 : new mongoose.Types.ObjectId();
-            const existing = productData._id ? await ProductModel.findById(id).select("seller") : null;
-            if (existing && user.role !== "admin" && String(existing.seller) !== String(user._id)) {
-                return { error: "You can only update your own products" };
-            }
             const safeData: Partial<IProduct> = { ...productData };
             delete safeData._id;
             const thumbnailReference = cloudinaryReference(safeData.thumbnail);
             const fileReference = cloudinaryReference(safeData.fileLink);
             if (thumbnailReference) safeData.thumbnailPublicId = thumbnailReference.publicId;
             if (fileReference) safeData.filePublicId = fileReference.publicId;
-            if (!existing || user.role !== "admin") safeData.seller = user._id;
             const product = await ProductModel.findOneAndUpdate({ _id: id }, safeData, options);
             if (!product) return { error: "Something went wrong in updating product server side" }
             return productFilter(product)
@@ -250,23 +246,18 @@ export async function getProductOptions(): Promise<ProductOption[]> {
 }
 
 /**
- * Public product detail with the seller card, access state for the current
- * visitor and a few related items.
+ * Public product detail with access state for the current visitor and a few
+ * related items.
  */
 export async function getPublishedProduct(slug: string) {
     if (!slug) return { error: "This product could not be found" };
     try {
         await connectDB();
-        const product = await ProductModel.findOne(publicProductQuery({ slug }))
-            .populate("seller", "name username image");
+        const product = await ProductModel.findOne(publicProductQuery({ slug }));
         if (!product) return { error: "This product could not be found" };
 
         const access = await getItemAccess({ productId: String(product._id) });
         const data = toPublicProduct(product);
-        const seller = (product as any).seller;
-        (data as { seller?: unknown }).seller = seller && typeof seller === "object"
-            ? { _id: String(seller._id), name: seller.name, username: seller.username, image: seller.image }
-            : undefined;
         (data as { tags?: string[] }).tags = (product.tags as string[]) || [];
 
         const tags = Array.isArray(product.tags) ? product.tags : [];

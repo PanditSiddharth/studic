@@ -19,6 +19,8 @@ export interface IBlog {
   tags: string[];
   products?: string[] | mongoose.Types.ObjectId[] | unknown[];
   author?: string | mongoose.Types.ObjectId;
+  /** Students who had a change approved on this article, shown as contributors. */
+  contributors?: unknown[];
   estimatedMinutes?: number;
   course?: string | mongoose.Types.ObjectId;
   seoTitle?: string;
@@ -45,6 +47,7 @@ export const BlogSchema = new Schema<IBlog>(
     tags: { type: [String], default: [] },
     products: [{ type: Schema.Types.ObjectId, ref: "Product" }],
     author: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    contributors: [{ type: Schema.Types.ObjectId, ref: "User" }],
     course: { type: Schema.Types.ObjectId, ref: "Course", index: true },
     estimatedMinutes: { type: Number, min: 0, default: 0 },
     seoTitle: { type: String, trim: true, maxlength: 160 },
@@ -56,6 +59,7 @@ export const BlogSchema = new Schema<IBlog>(
 
 BlogSchema.index({ status: 1, publishedAt: -1 });
 BlogSchema.index({ title: "text", description: "text", content: "text", tags: "text" });
+BlogSchema.index({ contributors: 1 });
 
 export const BlogModel: Model<IBlog> =
   (mongoose.models.Blog as Model<IBlog>) || mongoose.model<IBlog>("Blog", BlogSchema);

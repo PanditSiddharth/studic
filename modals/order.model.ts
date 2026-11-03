@@ -9,7 +9,6 @@ export interface IOrder {
   transactionId?: string;
   status: OrderStatus;
   buyer: mongoose.Types.ObjectId | string;
-  seller?: mongoose.Types.ObjectId | string;
   product?: mongoose.Types.ObjectId | string;
   course?: mongoose.Types.ObjectId | string;
   blog?: mongoose.Types.ObjectId | string;
@@ -32,7 +31,6 @@ const OrderSchema = new Schema<IOrder>(
     transactionId: { type: String, index: true, sparse: true },
     status: { type: String, enum: ["pending", "paid", "failed", "cancelled", "refunded", "partially_refunded"], default: "pending", index: true },
     buyer: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    seller: { type: Schema.Types.ObjectId, ref: "User", index: true },
     product: { type: Schema.Types.ObjectId, ref: "Product" },
     course: { type: Schema.Types.ObjectId, ref: "Course" },
     blog: { type: Schema.Types.ObjectId, ref: "Blog" },
