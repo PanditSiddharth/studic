@@ -11,7 +11,6 @@ import type { ChatAttachment, ChatMessage, ChatSummary } from "@/modals/chat.mod
 import ChatAvatar from "./chat-avatar";
 import { formatTime, groupMessagesByDay, senderTone } from "./chat-utils";
 import ChatMediaUpload from "./chat-media-upload";
-import VoiceCall from "./voice-call";
 
 function AttachmentPreview({ attachment, compact = false }: { attachment: ChatAttachment; compact?: boolean }) {
   if (attachment.kind === "image") {
@@ -51,8 +50,7 @@ interface ChatWindowProps {
   readOnly: boolean;
   currentUserId: string;
   onSend: (text: string, attachment?: ChatAttachment) => Promise<boolean>;
-  mediaSettings: { allowMedia: boolean; allowImages: boolean; allowDocuments: boolean; allowVoiceCalls: boolean };
-  allowVoiceCalls: boolean;
+  mediaSettings: { allowMedia: boolean; allowImages: boolean; allowDocuments: boolean };
   allowMemberMedia: boolean;
   allowMemberMessages: boolean;
   onBack: () => void;
@@ -70,7 +68,6 @@ export default function ChatWindow({
   currentUserId,
   onSend,
   mediaSettings,
-  allowVoiceCalls,
   allowMemberMedia,
   allowMemberMessages,
   onBack,
@@ -164,7 +161,6 @@ export default function ChatWindow({
         >
           <ArrowLeft size={18} />
         </Button>
-        {mediaSettings.allowVoiceCalls && allowVoiceCalls ? <VoiceCall chatId={chat._id} currentUserId={currentUserId} /> : null}
         <ChatAvatar name={chat.title} image={chat.image} kind={chat.kind} seed={chat._id} className="h-10 w-10" />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
