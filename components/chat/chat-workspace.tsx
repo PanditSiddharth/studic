@@ -35,7 +35,7 @@ export default function ChatWorkspace() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
   const [sending, setSending] = useState(false);
-  const [mediaSettings, setMediaSettings] = useState({ allowMedia: false, allowImages: false, allowDocuments: false, allowVoiceCalls: false });
+  const [mediaSettings, setMediaSettings] = useState({ allowMedia: false, allowImages: false, allowDocuments: false });
 
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -283,7 +283,6 @@ export default function ChatWorkspace() {
           loading={loadingChat}
           sending={sending}
           mediaSettings={mediaSettings}
-          allowVoiceCalls={isAdmin || chat?.moderation?.permissions?.membersCanUseVoice !== false}
           allowMemberMedia={isAdmin || chat?.moderation?.permissions?.membersCanSendMedia !== false}
           allowMemberMessages={isAdmin || chat?.moderation?.permissions?.membersCanMessage !== false && chat?.moderation?.permissions?.adminsOnlyMessaging !== true}
           readOnly={readOnly}
