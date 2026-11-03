@@ -6,7 +6,6 @@ import {
   ChatModel,
   ChatReadModel,
   MessageModel,
-  VoiceCallModel,
   type ChatDirectoryUser,
   type ChatMessage,
   type ChatSummary,
@@ -24,15 +23,12 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$
 const COMMUNITY_CHAT_KEY = "all-site-users";
 const COMMUNITY_CHAT_NAME = "Studic Community";
 const RESTRICTED_WORD_MUTE_SECONDS = 10 * 60;
-const MAX_VOICE_PARTICIPANTS = 5;
-const VOICE_LEASE_MS = 15_000;
 const defaultGroupPermissions = {
   membersCanMessage: true,
   adminsOnlyMessaging: false,
   membersCanSendMedia: true,
   membersCanEditInfo: false,
   membersCanInvite: true,
-  membersCanUseVoice: true,
   isPublic: false,
   isDiscoverable: false,
 };
@@ -41,7 +37,6 @@ const defaultChatMediaSettings = {
   allowMedia: false,
   allowImages: false,
   allowDocuments: false,
-  allowVoiceCalls: false,
   retentionDays: 30,
 };
 
@@ -51,7 +46,6 @@ async function getChatMediaConfig() {
     allowMedia: Boolean(settings.allowMedia),
     allowImages: Boolean(settings.allowImages),
     allowDocuments: Boolean(settings.allowDocuments),
-    allowVoiceCalls: Boolean(settings.allowVoiceCalls),
     retentionDays: settings.retentionDays == null ? null : Number(settings.retentionDays),
   } : defaultChatMediaSettings;
 }
@@ -553,7 +547,6 @@ export async function updateChatModeration(input: {
     membersCanSendMedia: boolean;
     membersCanEditInfo: boolean;
     membersCanInvite: boolean;
-    membersCanUseVoice: boolean;
     isPublic: boolean;
     isDiscoverable: boolean;
   }>;
@@ -765,100 +758,6 @@ export async function deleteChatMessagesByRange(input: {
     console.error("Error deleting chat messages by range", error);
     return { error: error?.message || "Could not delete messages" };
   }
-}
-
-const voiceParticipant = (entry: any) => ({
-  userId: idOf(entry.user),
-  joinedAt: entry.joinedAt,
-  lastSeenAt: entry.lastSeenAt,
-});
-
-export async function joinVoiceCall(chatId: string) {
-  const user = await getSessionUser();
-  if (!user?._id) return { error: "Sign in to join a voice call", requiresAuth: true };
-  const limiter = await consumeServerRateLimit(`voice:join:${user._id}`, 12, 60_000);
-  if (!limiter.allowed) return { error: `Too many call attempts. Try again in ${limiter.retryAfter}s.` };
-  if (!mongoose.isValidObjectId(chatId)) return { error: "Chat not found" };
-  try {
-    await connectDB();
-    const config = await getChatMediaConfig();
-    if (!config.allowVoiceCalls) return { error: "Voice calls are disabled by the administrator" };
-    const chat = await ChatModel.findById(chatId).select("participants");
-    if (!chat || !isParticipant(chat, String(user._id))) return { error: "Only chat members can join this call" };
-    const now = new Date();
-    const stale = new Date(Date.now() - VOICE_LEASE_MS);
-    await VoiceCallModel.updateOne({ chat: chat._id }, { $pull: { participants: { lastSeenAt: { $lt: stale } } } });
-    const current = await VoiceCallModel.findOne({ chat: chat._id });
-    const existing = current?.participants?.find((entry: any) => idOf(entry.user) === String(user._id));
-    if (existing) {
-      await VoiceCallModel.updateOne({ _id: current._id, "participants.user": user._id }, { $set: { "participants.$.lastSeenAt": now } });
-    } else {
-      const activeCount = (current?.participants || []).filter((entry: any) => new Date(entry.lastSeenAt).getTime() >= stale.getTime()).length;
-      if (activeCount >= MAX_VOICE_PARTICIPANTS) {
-        return { waiting: true, activeCount, limit: MAX_VOICE_PARTICIPANTS };
-      }
-      await VoiceCallModel.findOneAndUpdate(
-        { chat: chat._id },
-        { $setOnInsert: { chat: chat._id }, $push: { participants: { user: user._id, joinedAt: now, lastSeenAt: now } } },
-        { upsert: true, new: true }
-      );
-    }
-    const fresh: any = await VoiceCallModel.findOne({ chat: chat._id }).lean();
-    return { joined: true, participants: (fresh?.participants || []).map(voiceParticipant), limit: MAX_VOICE_PARTICIPANTS };
-  } catch (error: any) {
-    console.error("Error joining voice call", error);
-    return { error: error?.message || "Could not join voice call" };
-  }
-}
-
-export async function leaveVoiceCall(chatId: string) {
-  const user = await getSessionUser();
-  if (!user?._id || !mongoose.isValidObjectId(chatId)) return { error: "Invalid voice call" };
-  await connectDB();
-  await VoiceCallModel.updateOne({ chat: chatId }, { $pull: { participants: { user: user._id } } });
-  return { success: true };
-}
-
-export async function heartbeatVoiceCall(chatId: string) {
-  const user = await getSessionUser();
-  if (!user?._id || !mongoose.isValidObjectId(chatId)) return { error: "Invalid voice call" };
-  await connectDB();
-  const call: any = await VoiceCallModel.findOneAndUpdate(
-    { chat: chatId, "participants.user": user._id },
-    { $set: { "participants.$.lastSeenAt": new Date() } },
-    { new: true }
-  ).lean();
-  return { participants: (call?.participants || []).map(voiceParticipant), limit: MAX_VOICE_PARTICIPANTS };
-}
-
-export async function exchangeVoiceSignal(input: { chatId: string; to: string; type: "offer" | "answer" | "candidate"; payload: Record<string, unknown> }) {
-  const user = await getSessionUser();
-  if (!user?._id || !mongoose.isValidObjectId(input?.chatId) || !mongoose.isValidObjectId(input?.to)) return { error: "Invalid voice signal" };
-  const limiter = await consumeServerRateLimit(`voice:signal:${user._id}`, 180, 60_000);
-  if (!limiter.allowed) return { error: `Voice signalling rate limit reached. Try again in ${limiter.retryAfter}s.` };
-  if (!input.payload || JSON.stringify(input.payload).length > 16_384) return { error: "Voice signal payload is too large" };
-  await connectDB();
-  const call: any = await VoiceCallModel.findOne({ chat: input.chatId, "participants.user": { $all: [user._id, input.to] } });
-  if (!call) return { error: "Both users must be in the voice call" };
-  await VoiceCallModel.updateOne(
-    { _id: call._id },
-    {
-      $pull: { signals: { createdAt: { $lt: new Date(Date.now() - 30_000) } } },
-      $push: { signals: { $each: [{ from: user._id, to: input.to, type: input.type, payload: input.payload, createdAt: new Date() }], $slice: -100 } },
-    }
-  );
-  return { success: true };
-}
-
-export async function getVoiceSignals(chatId: string) {
-  const user = await getSessionUser();
-  if (!user?._id || !mongoose.isValidObjectId(chatId)) return { error: "Invalid voice call" };
-  await connectDB();
-  const call: any = await VoiceCallModel.findOne({ chat: chatId, "participants.user": user._id }).lean();
-  if (!call) return { signals: [], participants: [], limit: MAX_VOICE_PARTICIPANTS };
-  const signals = (call.signals || []).filter((signal: any) => idOf(signal.to) === String(user._id));
-  if (signals.length) await VoiceCallModel.updateOne({ _id: call._id }, { $pull: { signals: { to: user._id } } });
-  return { signals, participants: (call.participants || []).map(voiceParticipant), limit: MAX_VOICE_PARTICIPANTS };
 }
 
 export async function startDirectChat(userId: string) {
