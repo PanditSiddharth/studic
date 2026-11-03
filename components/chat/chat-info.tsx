@@ -33,7 +33,6 @@ export default function ChatInfo({ chat, currentUserId, readOnly, isAdmin = fals
     membersCanSendMedia: true,
     membersCanEditInfo: false,
     membersCanInvite: true,
-    membersCanUseVoice: true,
     isPublic: false,
     isDiscoverable: false,
     ...chat.moderation?.permissions,
@@ -271,7 +270,6 @@ export default function ChatInfo({ chat, currentUserId, readOnly, isAdmin = fals
                 ["membersCanSendMedia", "Members can send media and files"],
                 ["membersCanEditInfo", "Members can edit group info/photo"],
                 ["membersCanInvite", "Members can invite new users"],
-                ["membersCanUseVoice", "Members can use voice calls"],
                 ["isPublic", "Make group public"],
                 ["isDiscoverable", "Show group in discovery"],
               ] as const).map(([key, label]) => (
