@@ -16,7 +16,6 @@ export async function getAdminChatSettings() {
         allowMedia: false,
         allowImages: false,
         allowDocuments: false,
-        allowVoiceCalls: false,
         retentionDays: 30,
       },
     },
@@ -29,7 +28,6 @@ export async function getAdminChatSettings() {
       allowMedia: Boolean(settings?.allowMedia),
       allowImages: Boolean(settings?.allowImages),
       allowDocuments: Boolean(settings?.allowDocuments),
-      allowVoiceCalls: Boolean(settings?.allowVoiceCalls),
       retentionDays: settings?.retentionDays ?? 30,
     })),
   };
@@ -39,7 +37,6 @@ export async function updateAdminChatSettings(input: {
   allowMedia: boolean;
   allowImages: boolean;
   allowDocuments: boolean;
-  allowVoiceCalls: boolean;
   retentionDays: number | null;
 }) {
   const user = await getSessionUser();
@@ -56,7 +53,6 @@ export async function updateAdminChatSettings(input: {
         allowMedia: Boolean(input.allowMedia),
         allowImages: Boolean(input.allowMedia && input.allowImages),
         allowDocuments: Boolean(input.allowMedia && input.allowDocuments),
-        allowVoiceCalls: Boolean(input.allowVoiceCalls),
         retentionDays,
         updatedBy: user._id,
       },
@@ -71,7 +67,6 @@ export async function updateAdminChatSettings(input: {
       allowMedia: Boolean(settings?.allowMedia),
       allowImages: Boolean(settings?.allowImages),
       allowDocuments: Boolean(settings?.allowDocuments),
-      allowVoiceCalls: Boolean(settings?.allowVoiceCalls),
       retentionDays: settings?.retentionDays ?? 30,
     })),
   };
