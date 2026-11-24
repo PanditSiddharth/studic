@@ -81,7 +81,7 @@ export default function HomePage() {
                 <Sparkles size={14} className="text-primary" /> Practical learning for your next step
               </motion.span>
               <motion.h1 variants={reveal} className="mt-6 text-4xl font-bold leading-[1.08] tracking-tight sm:text-6xl">
-                Learn skills. Build projects. <span className="text-primary">Move forward.</span>
+                Learn skills. Build projects. <span className="text-primary">Move forward.  </span>
               </motion.h1>
               <motion.p variants={reveal} className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Discover practical courses, clear articles and useful digital resources created for students, developers and curious builders.

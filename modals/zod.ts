@@ -30,8 +30,27 @@ export const signUpSchema = z
     message: "Passwords do not match",
   });
 
+export const resetPasswordSchema = z
+  .object({
+    email: emailSchema,
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters")
+      .max(72, "Keep your password under 72 characters")
+      .regex(/[A-Za-z]/, "Include at least one letter")
+      .regex(/[0-9]/, "Include at least one number"),
+    confirmPassword: z.string().min(1, "Confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  });
+
+export const otpCodeSchema = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code");
+
 export type SignInValues = z.infer<typeof signInSchema>;
 export type SignUpValues = z.infer<typeof signUpSchema>;
+export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 
 export const userSettingsSchema = z.object({
   name: z.string().trim().min(1).max(100),

@@ -15,18 +15,35 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInSchema, signUpSchema, type SignInValues, type SignUpValues } from "@/modals/zod";
-import { registerUser } from "@/server-functions/auth-actions";
+import {
+  signInSchema, signUpSchema, type SignInValues, type SignUpValues,
+} from "@/modals/zod";
+import {
+  requestPasswordResetOtp,
+  requestRegistrationOtp,
+  startLoginCheck,
+  verifyLoginOtp,
+  verifyPasswordResetOtp,
+  verifyRegistrationOtp,
+} from "@/server-functions/auth-actions";
 import { cn } from "@/modals/utils";
 
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "forgot";
 type Provider = "google" | "github";
+type OtpStage = {
+  purpose: "signin" | "signup" | "forgot";
+  email: string;
+  name?: string;
+  password?: string;
+};
 
 const benefits = [
   { icon: GraduationCap, title: "Structured courses", text: "Follow courses that build skill by skill." },
   { icon: Download, title: "Downloadable resources", text: "Keep every product you claim or buy." },
   { icon: BookOpen, title: "One learning library", text: "Courses, products and orders in a single place." },
 ];
+
+const forgotEmailSchema = signInSchema.pick({ email: true });
 
 function safeCallback(value?: string | null) {
   if (value && value.startsWith("/") && !value.startsWith("//")) return value;
@@ -40,6 +57,11 @@ export default function AuthScreen() {
   const [callbackUrl, setCallbackUrl] = useState("/");
   const [showPassword, setShowPassword] = useState(false);
   const [pendingProvider, setPendingProvider] = useState<Provider | null>(null);
+  const [otpStage, setOtpStage] = useState<OtpStage | null>(null);
+  const [otp, setOtp] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -49,6 +71,7 @@ export default function AuthScreen() {
 
   const signInForm = useForm<SignInValues>({ resolver: zodResolver(signInSchema) });
   const signUpForm = useForm<SignUpValues>({ resolver: zodResolver(signUpSchema) });
+  const forgotForm = useForm<{ email: string }>({ resolver: zodResolver(forgotEmailSchema) });
 
   const password = signUpForm.watch("password") || "";
   const strength = useMemo(() => {
@@ -59,14 +82,44 @@ export default function AuthScreen() {
     return score;
   }, [password]);
 
-  const finishSignIn = (url: string) => {
-    toast.success("Welcome back to Studic");
+  const finishSignIn = (url: string, message = "Welcome back to Studic") => {
+    toast.success(message);
     router.push(url);
     router.refresh();
   };
 
+  const finishWithToken = async (token: string) => {
+    const result = await signIn("credentials", { loginToken: token, redirect: false });
+    if (result?.error) {
+      toast.error("Could not start your session. Please sign in again.");
+      setOtpStage(null);
+      setMode("signin");
+      return;
+    }
+    setOtpStage(null);
+    setOtp("");
+    finishSignIn(callbackUrl);
+  };
+
   const onSubmitSignIn = async (values: SignInValues) => {
-    const result = await signIn("credentials", { email: values.email, password: values.password, redirect: false });
+    const check = await startLoginCheck({ email: values.email, password: values.password });
+    if ("error" in check) {
+      toast.error(check.error);
+      return;
+    }
+
+    if (check.otpRequired) {
+      setOtp("");
+      setOtpStage({ purpose: "signin", email: values.email, password: values.password });
+      toast.info(check.message || "Enter the code we emailed you.");
+      return;
+    }
+
+    const result = await signIn("credentials", {
+      email: values.email,
+      password: values.password,
+      redirect: false,
+    });
     if (result?.error) {
       toast.error("Email or password is incorrect. Please try again.");
       return;
@@ -75,21 +128,130 @@ export default function AuthScreen() {
   };
 
   const onSubmitSignUp = async (values: SignUpValues) => {
-    const result = await registerUser({ name: values.name, email: values.email, password: values.password });
+    const result = await requestRegistrationOtp({
+      name: values.name,
+      email: values.email,
+      password: values.password,
+    });
     if ("error" in result) {
       toast.error(result.error);
       return;
     }
-    const signed = await signIn("credentials", { email: values.email, password: values.password, redirect: false });
-    if (signed?.error) {
-      toast.success("Account created. Please sign in.");
-      setMode("signin");
-      signInForm.setValue("email", values.email);
+    setOtp("");
+    setOtpStage({
+      purpose: "signup",
+      email: values.email,
+      name: values.name,
+      password: values.password,
+    });
+    toast.success(result.message);
+  };
+
+  const onSubmitForgot = async (values: { email: string }) => {
+    const result = await requestPasswordResetOtp({ email: values.email });
+    if ("error" in result) {
+      toast.error(result.error);
       return;
     }
-    toast.success("Your account is ready");
-    router.push(callbackUrl);
-    router.refresh();
+    setOtp("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setOtpStage({ purpose: "forgot", email: values.email });
+    toast.success(result.message);
+  };
+
+  const verifyOtp = async () => {
+    if (!otpStage) return;
+    if (!/^\d{6}$/.test(otp)) {
+      toast.error("Enter the 6-digit code.");
+      return;
+    }
+
+    setOtpBusy(true);
+    try {
+      if (otpStage.purpose === "signup") {
+        const result = await verifyRegistrationOtp({
+          name: otpStage.name,
+          email: otpStage.email,
+          password: otpStage.password,
+          otp,
+        });
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+        await finishWithToken(result.token);
+        return;
+      }
+
+      if (otpStage.purpose === "signin") {
+        const result = await verifyLoginOtp({ email: otpStage.email, otp });
+        if ("error" in result) {
+          toast.error(result.error);
+          return;
+        }
+        await finishWithToken(result.token);
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        toast.error("Passwords do not match.");
+        return;
+      }
+      const result = await verifyPasswordResetOtp({
+        email: otpStage.email,
+        otp,
+        password: newPassword,
+        confirmPassword: confirmNewPassword,
+      });
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Password updated. Sign in with your new password.");
+      signInForm.setValue("email", otpStage.email);
+      setOtpStage(null);
+      setOtp("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setMode("signin");
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (!otpStage || otpBusy) return;
+    setOtpBusy(true);
+    try {
+      let result: { error: string } | { otpRequired?: boolean; message?: string } | { success?: true; message?: string };
+      if (otpStage.purpose === "signup") {
+        result = await requestRegistrationOtp({
+          name: otpStage.name,
+          email: otpStage.email,
+          password: otpStage.password,
+        });
+      } else if (otpStage.purpose === "signin") {
+        result = await startLoginCheck({ email: otpStage.email, password: otpStage.password });
+      } else {
+        result = await requestPasswordResetOtp({ email: otpStage.email });
+      }
+
+      if ("error" in result && result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("A new code is on its way.");
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const resetFlow = () => {
+    setOtpStage(null);
+    setOtp("");
+    setNewPassword("");
+    setConfirmNewPassword("");
   };
 
   const onProvider = async (provider: Provider) => {
@@ -117,6 +279,13 @@ export default function AuthScreen() {
       </section>
     );
   }
+
+  const otpCopy =
+    otpStage?.purpose === "signup"
+      ? { title: "Verify your email", action: "Verify & create account" }
+      : otpStage?.purpose === "forgot"
+        ? { title: "Reset your password", action: "Reset password" }
+        : { title: "Check your email", action: "Verify & sign in" };
 
   return (
     <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-10 lg:min-h-[calc(100svh-8rem)] lg:grid-cols-[1.05fr_0.95fr] lg:py-14">
@@ -163,177 +332,312 @@ export default function AuthScreen() {
         </div>
 
         <Card className="overflow-hidden border shadow-xl shadow-primary/5">
-          <div className="grid grid-cols-2 gap-1 border-b bg-muted/40 p-1.5">
-            {(["signin", "signup"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setMode(value)}
-                className={cn(
-                  "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                  mode === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {value === "signin" ? "Sign in" : "Create account"}
-              </button>
-            ))}
-          </div>
+          {!otpStage && (
+            <div className="grid grid-cols-2 gap-1 border-b bg-muted/40 p-1.5">
+              {(["signin", "signup"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => { resetFlow(); setMode(value); }}
+                  className={cn(
+                    "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    mode === value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {value === "signin" ? "Sign in" : "Create account"}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-5 p-6 sm:p-7">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">
-                {mode === "signin" ? "Welcome back" : "Start learning today"}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {mode === "signin" ? "Sign in to continue where you left off." : "Create a free account — it takes a minute."}
-              </p>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" variant="outline" className="h-11 justify-center gap-2" disabled={pendingProvider !== null} onClick={() => onProvider("google")}>
-                {pendingProvider === "google" ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />} Google
-              </Button>
-              <Button type="button" variant="outline" className="h-11 justify-center gap-2" disabled={pendingProvider !== null} onClick={() => onProvider("github")}>
-                {pendingProvider === "github" ? <Loader2 size={16} className="animate-spin" /> : <Github size={16} />} GitHub
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <span className="h-px flex-1 bg-border" /> or use email <span className="h-px flex-1 bg-border" />
-            </div>
-
-            {mode === "signin" ? (
-              <form className="space-y-4" onSubmit={signInForm.handleSubmit(onSubmitSignIn)} noValidate>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
-                  <div className="relative">
-                    <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input id="signin-email" type="email" autoComplete="email" placeholder="you@example.com" className="h-11 pl-9" {...signInForm.register("email")} />
-                  </div>
-                  {signInForm.formState.errors.email && <p className="text-xs text-destructive">{signInForm.formState.errors.email.message}</p>}
+            {otpStage ? (
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight">{otpCopy.title}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    We sent a 6-digit code to <span className="font-medium text-foreground">{otpStage.email}</span>.
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                      onClick={() => toast.info("Password reset is not available yet. Contact support if you are locked out.")}
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <LockKeyhole size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="signin-password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      placeholder="••••••••"
-                      className="h-11 pl-9 pr-10"
-                      {...signInForm.register("password")}
-                    />
-                    <button
-                      type="button"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      onClick={() => setShowPassword((current) => !current)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                  {signInForm.formState.errors.password && <p className="text-xs text-destructive">{signInForm.formState.errors.password.message}</p>}
-                </div>
-
-                <Button type="submit" className="h-11 w-full gap-2" disabled={signInForm.formState.isSubmitting}>
-                  {signInForm.formState.isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
-                  Sign in <ArrowRight size={16} />
-                </Button>
-
-                <p className="text-center text-xs text-muted-foreground">
-                  New to Studic?{" "}
-                  <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signup")}>
-                    Create an account
-                  </button>
-                </p>
-              </form>
-            ) : (
-              <form className="space-y-4" onSubmit={signUpForm.handleSubmit(onSubmitSignUp)} noValidate>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full name</Label>
-                  <div className="relative">
-                    <UserRound size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input id="signup-name" autoComplete="name" placeholder="Siddharth Sharma" className="h-11 pl-9" {...signUpForm.register("name")} />
-                  </div>
-                  {signUpForm.formState.errors.name && <p className="text-xs text-destructive">{signUpForm.formState.errors.name.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <div className="relative">
-                    <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input id="signup-email" type="email" autoComplete="email" placeholder="you@example.com" className="h-11 pl-9" {...signUpForm.register("email")} />
-                  </div>
-                  {signUpForm.formState.errors.email && <p className="text-xs text-destructive">{signUpForm.formState.errors.email.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <div className="relative">
-                    <LockKeyhole size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="signup-password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      placeholder="At least 8 characters"
-                      className="h-11 pl-9 pr-10"
-                      {...signUpForm.register("password")}
-                    />
-                    <button
-                      type="button"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      onClick={() => setShowPassword((current) => !current)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {[0, 1, 2].map((step) => (
-                      <span
-                        key={step}
-                        className={cn(
-                          "h-1 flex-1 rounded-full transition-colors",
-                          password && strength > step ? (strength === 1 ? "bg-amber-400" : strength === 2 ? "bg-lime-500" : "bg-emerald-500") : "bg-muted"
-                        )}
+                {otpStage.purpose === "forgot" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-password">New password</Label>
+                      <div className="relative">
+                        <LockKeyhole size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="reset-password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="new-password"
+                          placeholder="At least 8 characters"
+                          className="h-11 pl-9 pr-10"
+                          value={newPassword}
+                          onChange={(event) => setNewPassword(event.target.value)}
+                        />
+                        <button
+                          type="button"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          onClick={() => setShowPassword((current) => !current)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-confirm">Confirm new password</Label>
+                      <Input
+                        id="reset-confirm"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Repeat your password"
+                        className="h-11"
+                        value={confirmNewPassword}
+                        onChange={(event) => setConfirmNewPassword(event.target.value)}
                       />
-                    ))}
-                    <span className="w-16 text-right text-[11px] text-muted-foreground">
-                      {password ? ["Weak", "Fair", "Good", "Strong"][strength] : ""}
-                    </span>
-                  </div>
-                  {signUpForm.formState.errors.password && <p className="text-xs text-destructive">{signUpForm.formState.errors.password.message}</p>}
-                </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-confirm">Confirm password</Label>
-                  <Input id="signup-confirm" type="password" autoComplete="new-password" placeholder="Repeat your password" className="h-11" {...signUpForm.register("confirmPassword")} />
-                  {signUpForm.formState.errors.confirmPassword && <p className="text-xs text-destructive">{signUpForm.formState.errors.confirmPassword.message}</p>}
+                  <Label htmlFor="otp-code">Verification code</Label>
+                  <Input
+                    id="otp-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="000000"
+                    className="h-12 text-center text-lg font-semibold tracking-[0.5em]"
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  />
                 </div>
 
-                <Button type="submit" className="h-11 w-full gap-2" disabled={signUpForm.formState.isSubmitting}>
-                  {signUpForm.formState.isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
-                  Create account <ArrowRight size={16} />
+                <Button
+                  type="button"
+                  className="h-11 w-full gap-2"
+                  onClick={verifyOtp}
+                  disabled={otpBusy || otp.length !== 6}
+                >
+                  {otpBusy ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {otpCopy.action} <ArrowRight size={16} />
                 </Button>
 
-                <p className="text-center text-xs text-muted-foreground">
-                  Already have an account?{" "}
-                  <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
-                    Sign in
+                <div className="flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    onClick={() => { resetFlow(); if (otpStage.purpose === "forgot") setMode("signin"); }}
+                  >
+                    Back
                   </button>
-                </p>
-              </form>
+                  <button
+                    type="button"
+                    className="font-medium text-primary underline-offset-4 hover:underline disabled:opacity-50"
+                    onClick={resendOtp}
+                    disabled={otpBusy}
+                  >
+                    Resend code
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    {mode === "signin" ? "Welcome back" : mode === "signup" ? "Start learning today" : "Forgot password?"}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {mode === "signin"
+                      ? "Sign in to continue where you left off."
+                      : mode === "signup"
+                        ? "Create a free account — it takes a minute."
+                        : "Enter your email and we will send you a verification code."}
+                  </p>
+                </div>
+
+                {mode !== "forgot" && (
+                  <>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button type="button" variant="outline" className="h-11 justify-center gap-2" disabled={pendingProvider !== null} onClick={() => onProvider("google")}>
+                        {pendingProvider === "google" ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />} Google
+                      </Button>
+                      <Button type="button" variant="outline" className="h-11 justify-center gap-2" disabled={pendingProvider !== null} onClick={() => onProvider("github")}>
+                        {pendingProvider === "github" ? <Loader2 size={16} className="animate-spin" /> : <Github size={16} />} GitHub
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <span className="h-px flex-1 bg-border" /> or use email <span className="h-px flex-1 bg-border" />
+                    </div>
+                  </>
+                )}
+
+                {mode === "signin" && (
+                  <form className="space-y-4" onSubmit={signInForm.handleSubmit(onSubmitSignIn)} noValidate>
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-email">Email</Label>
+                      <div className="relative">
+                        <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input id="signin-email" type="email" autoComplete="email" placeholder="you@example.com" className="h-11 pl-9" {...signInForm.register("email")} />
+                      </div>
+                      {signInForm.formState.errors.email && <p className="text-xs text-destructive">{signInForm.formState.errors.email.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="signin-password">Password</Label>
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                          onClick={() => {
+                            forgotForm.setValue("email", signInForm.getValues("email") || "");
+                            setMode("forgot");
+                          }}
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <LockKeyhole size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="signin-password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          placeholder="••••••••"
+                          className="h-11 pl-9 pr-10"
+                          {...signInForm.register("password")}
+                        />
+                        <button
+                          type="button"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          onClick={() => setShowPassword((current) => !current)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                      {signInForm.formState.errors.password && <p className="text-xs text-destructive">{signInForm.formState.errors.password.message}</p>}
+                    </div>
+
+                    <Button type="submit" className="h-11 w-full gap-2" disabled={signInForm.formState.isSubmitting}>
+                      {signInForm.formState.isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                      Sign in <ArrowRight size={16} />
+                    </Button>
+
+                    <p className="text-center text-xs text-muted-foreground">
+                      New to Studic?{" "}
+                      <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signup")}>
+                        Create an account
+                      </button>
+                    </p>
+                  </form>
+                )}
+
+                {mode === "signup" && (
+                  <form className="space-y-4" onSubmit={signUpForm.handleSubmit(onSubmitSignUp)} noValidate>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name">Full name</Label>
+                      <div className="relative">
+                        <UserRound size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input id="signup-name" autoComplete="name" placeholder="Siddharth Sharma" className="h-11 pl-9" {...signUpForm.register("name")} />
+                      </div>
+                      {signUpForm.formState.errors.name && <p className="text-xs text-destructive">{signUpForm.formState.errors.name.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <div className="relative">
+                        <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input id="signup-email" type="email" autoComplete="email" placeholder="you@example.com" className="h-11 pl-9" {...signUpForm.register("email")} />
+                      </div>
+                      {signUpForm.formState.errors.email && <p className="text-xs text-destructive">{signUpForm.formState.errors.email.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <div className="relative">
+                        <LockKeyhole size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="signup-password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="new-password"
+                          placeholder="At least 8 characters"
+                          className="h-11 pl-9 pr-10"
+                          {...signUpForm.register("password")}
+                        />
+                        <button
+                          type="button"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          onClick={() => setShowPassword((current) => !current)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {[0, 1, 2].map((step) => (
+                          <span
+                            key={step}
+                            className={cn(
+                              "h-1 flex-1 rounded-full transition-colors",
+                              password && strength > step ? (strength === 1 ? "bg-amber-400" : strength === 2 ? "bg-lime-500" : "bg-emerald-500") : "bg-muted"
+                            )}
+                          />
+                        ))}
+                        <span className="w-16 text-right text-[11px] text-muted-foreground">
+                          {password ? ["Weak", "Fair", "Good", "Strong"][strength] : ""}
+                        </span>
+                      </div>
+                      {signUpForm.formState.errors.password && <p className="text-xs text-destructive">{signUpForm.formState.errors.password.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-confirm">Confirm password</Label>
+                      <Input id="signup-confirm" type="password" autoComplete="new-password" placeholder="Repeat your password" className="h-11" {...signUpForm.register("confirmPassword")} />
+                      {signUpForm.formState.errors.confirmPassword && <p className="text-xs text-destructive">{signUpForm.formState.errors.confirmPassword.message}</p>}
+                    </div>
+
+                    <Button type="submit" className="h-11 w-full gap-2" disabled={signUpForm.formState.isSubmitting}>
+                      {signUpForm.formState.isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                      Continue <ArrowRight size={16} />
+                    </Button>
+
+                    <p className="text-center text-xs text-muted-foreground">
+                      Already have an account?{" "}
+                      <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
+                        Sign in
+                      </button>
+                    </p>
+                  </form>
+                )}
+
+                {mode === "forgot" && (
+                  <form className="space-y-4" onSubmit={forgotForm.handleSubmit(onSubmitForgot)} noValidate>
+                    <div className="space-y-2">
+                      <Label htmlFor="forgot-email">Email</Label>
+                      <div className="relative">
+                        <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input id="forgot-email" type="email" autoComplete="email" placeholder="you@example.com" className="h-11 pl-9" {...forgotForm.register("email")} />
+                      </div>
+                      {forgotForm.formState.errors.email && <p className="text-xs text-destructive">{forgotForm.formState.errors.email.message}</p>}
+                    </div>
+
+                    <Button type="submit" className="h-11 w-full gap-2" disabled={forgotForm.formState.isSubmitting}>
+                      {forgotForm.formState.isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+                      Send code <ArrowRight size={16} />
+                    </Button>
+
+                    <p className="text-center text-xs text-muted-foreground">
+                      Remembered it?{" "}
+                      <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setMode("signin")}>
+                        Back to sign in
+                      </button>
+                    </p>
+                  </form>
+                )}
+              </>
             )}
 
             <p className="text-center text-[11px] leading-5 text-muted-foreground">

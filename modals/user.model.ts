@@ -27,6 +27,7 @@ export interface IUser {
   status?: UserStatus;
   emailVerified?: Date | null;
   lastLoginAt?: Date;
+  devices?: string[];
   createdOn?: Date;
   updatedAt?: Date;
 }
@@ -53,6 +54,8 @@ export const UserSchema = new Schema<IUser>(
     status: { type: String, enum: ["active", "suspended", "deleted"], default: "active", index: true },
     emailVerified: { type: Date, default: null },
     lastLoginAt: { type: Date },
+    // Browsers that completed an email OTP. A new browser must verify once.
+    devices: { type: [String], default: [] },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
 );
