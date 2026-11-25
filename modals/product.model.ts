@@ -19,6 +19,8 @@ export interface IProduct {
   fileSize?: number;
   mimeType?: string;
   downloadLimit?: number | null;
+  externalLink?: string;
+  externalLinkLabel?: string;
   publishedAt?: Date;
   createdOn?: Date;
   updatedAt?: Date;
@@ -41,6 +43,8 @@ export const ProductSchema = new Schema<IProduct>(
     fileSize: { type: Number, min: 0 },
     mimeType: { type: String, trim: true },
     downloadLimit: { type: Number, min: 1, default: null },
+    externalLink: { type: String, trim: true },
+    externalLinkLabel: { type: String, trim: true, maxlength: 40 },
     publishedAt: { type: Date },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }

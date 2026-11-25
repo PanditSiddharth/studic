@@ -3,13 +3,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm, type FieldErrors } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import {
-  ArrowLeft, BookOpen, Clock3, Eye, FileText, Globe2, ImageIcon, IndianRupee,
+  ArrowLeft, BookOpen, Clock3, Eye, ExternalLink, FileText, Globe2, ImageIcon, IndianRupee,
   Loader2, Package, Search, Sparkles, Tag, TriangleAlert,
 } from "lucide-react";
 import { ZodBlogSchema } from "@/modals/zod";
@@ -59,17 +59,18 @@ export default function AddBlogForm({
     mode: "onBlur",
   });
 
-  const title = form.watch("title") || "";
-  const slug = form.watch("slug") || "";
-  const description = form.watch("description") || "";
-  const seoTitle = form.watch("seoTitle") || "";
-  const seoDescription = form.watch("seoDescription") || "";
-  const status = form.watch("status") || "draft";
-  const accessType = form.watch("accessType");
+  const watched = useWatch({ control: form.control });
+  const title = watched.title || "";
+  const slug = watched.slug || "";
+  const description = watched.description || "";
+  const seoTitle = watched.seoTitle || "";
+  const seoDescription = watched.seoDescription || "";
+  const status = watched.status || "draft";
+  const accessType = watched.accessType;
 
   const previewTitle = seoTitle || title || "Article title";
   const previewDescription = seoDescription || description || "Add a short description so readers know what this article covers.";
-  const categories = form.watch("category") || [];
+  const categories = watched.category || [];
   const firstCategory = categories[0];
   const publicPath = useMemo(
     () => `/t/${firstCategory || "category"}/${slug || "your-article-slug"}`,
@@ -278,6 +279,23 @@ export default function AddBlogForm({
                     placeholder="Start writing your article…"
                   />
                 )}
+              />
+            </FormSection>
+
+            <FormSection title="External link" description="Add an optional video or related resource." icon={ExternalLink}>
+              <MyField
+                form={form}
+                name="externalLink"
+                label="Video or resource URL"
+                description="Leave blank to keep the article page unchanged."
+                input={(field) => <Input {...field} type="url" value={field.value ?? ""} placeholder="https://…" />}
+              />
+              <MyField
+                form={form}
+                name="externalLinkLabel"
+                label="Button label"
+                description="Leave blank to show “Open link”."
+                input={(field) => <Input {...field} value={field.value ?? ""} maxLength={40} placeholder="Open link" />}
               />
             </FormSection>
 

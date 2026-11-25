@@ -25,6 +25,8 @@ export interface IBlog {
   course?: string | mongoose.Types.ObjectId;
   seoTitle?: string;
   seoDescription?: string;
+  externalLink?: string;
+  externalLinkLabel?: string;
   publishedAt?: Date;
   createdOn?: Date;
   updatedAt?: Date;
@@ -52,6 +54,8 @@ export const BlogSchema = new Schema<IBlog>(
     estimatedMinutes: { type: Number, min: 0, default: 0 },
     seoTitle: { type: String, trim: true, maxlength: 160 },
     seoDescription: { type: String, trim: true, maxlength: 320 },
+    externalLink: { type: String, trim: true },
+    externalLinkLabel: { type: String, trim: true, maxlength: 40 },
     publishedAt: { type: Date },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }

@@ -36,6 +36,8 @@ export const getCourseDefault = (initial: Partial<ICourse> = {}) => {
     estimatedMinutes: initial?.estimatedMinutes ?? 0,
     prerequisites: initial?.prerequisites || [],
     landingPage: initial?.landingPage || "",
+    externalLink: initial?.externalLink || "",
+    externalLinkLabel: initial?.externalLinkLabel || "",
     content: initial?.content || [],
     products: toIdList(initial?.products),
     author: initial?.author ? String(initial.author) : "",
@@ -57,6 +59,8 @@ export const getBlogDefaults = (initial: Partial<IBlog> = {}) => {
     estimatedMinutes: initial?.estimatedMinutes ?? 0,
     seoTitle: initial?.seoTitle || "",
     seoDescription: initial?.seoDescription || "",
+    externalLink: initial?.externalLink || "",
+    externalLinkLabel: initial?.externalLinkLabel || "",
     updatedAt: initial?.updatedAt || new Date(),
   }
 }
@@ -68,6 +72,8 @@ export const getProductDefault = (initial: Partial<IProduct> = {}) => {
     currency: initial?.currency || "INR",
     status: initial?.status || "draft",
     fileLink: initial?.fileLink || "",
+    externalLink: initial?.externalLink || "",
+    externalLinkLabel: initial?.externalLinkLabel || "",
     fileName: initial?.fileName || "",
     fileSize: initial?.fileSize ?? 0,
     mimeType: initial?.mimeType || "",

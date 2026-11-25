@@ -54,7 +54,6 @@ export async function getCourse(options: GetCourseOptions): Promise<Partial<ICou
         return {error: "Invalid Url"}
     await connectDB()
     try {
-        let course: any;
         let query: any
         if(options.slug)
             query = { slug: options.slug }
@@ -65,7 +64,7 @@ export async function getCourse(options: GetCourseOptions): Promise<Partial<ICou
         const user = await getSessionUser();
         const isAdmin = user?.role === "admin";
 
-        course = await CourseModel.findOne(query)
+        const course: any = await CourseModel.findOne(query)
         if (!course) return {error: "No course found"}
 
         // Draft/private/archived courses are hidden from visitors, even when
@@ -88,7 +87,15 @@ export async function getCourse(options: GetCourseOptions): Promise<Partial<ICou
                 select: "title slug thumbnail description price currency tags status fileName fileSize",
             });
 
-        return courseFilter(course);
+        const result = courseFilter(course);
+        if (!isAdmin && course.accessType !== "free" && Number(course.price) > 0) {
+            const access = await getItemAccess({ courseId: String(course._id) });
+            if (!access.owned) {
+                delete result.externalLink;
+                delete result.externalLinkLabel;
+            }
+        }
+        return result;
     } catch (error: any) {
         console.error(error);
         return { error: error?.message || "Could not load this course" };
@@ -162,17 +169,25 @@ export async function getCourseLesson(options: GetCourseLessonOptions) {
         );
 
         if (locked) {
+            const courseSummary = courseFilter(course);
+            delete courseSummary.externalLink;
+            delete courseSummary.externalLinkLabel;
             return JSON.parse(JSON.stringify({
                 locked: true,
-                course: courseFilter(course),
+                course: courseSummary,
                 access,
                 lesson: summary,
             }));
         }
 
+        const courseSummary = courseFilter(course);
+        if (!isAdmin && isPaid && !access.owned) {
+            delete courseSummary.externalLink;
+            delete courseSummary.externalLinkLabel;
+        }
         return JSON.parse(JSON.stringify({
             locked: false,
-            course: courseFilter(course),
+            course: courseSummary,
             access,
             lesson: summary,
             blog: blogFilter(lesson),
@@ -226,6 +241,7 @@ export async function getCourses(options: GetCoursesOptions): Promise<ResProps |
 
         const [courses, totalCourses] = await Promise.all([
             CourseModel.find(query)
+                .select("-externalLink -externalLinkLabel")
                 .sort({ publishedAt: -1, createdOn: -1, _id: -1 })
                 .skip(skip)
                 .limit(limit),

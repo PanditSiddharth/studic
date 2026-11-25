@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import MarkdownPreview from "@uiw/react-markdown-preview";
 import rehypeHighlight from "rehype-highlight";
 import { toast } from "react-toastify";
 import {
-  ArrowLeft, BadgeCheck, Check, Clock, Copy, Download, FileBox, FileText,
+  ArrowLeft, BadgeCheck, Check, Clock, Copy, Download, ExternalLink, FileBox, FileText,
   Loader2, PackageOpen, ShieldCheck, Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,14 +38,14 @@ export default function ProductDetail({ slug }: { slug: string }) {
   const { theme, systemTheme } = useTheme();
   const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadedSlug, setLoadedSlug] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const colorMode = ["dark", "blue"].includes((theme === "system" ? systemTheme : theme) as string) ? "dark" : "light";
 
-  const load = useCallback(async () => {
-    const result = await getPublishedProduct(slug);
+  const applyProductResult = useCallback((result: Awaited<ReturnType<typeof getPublishedProduct>>) => {
     if ("error" in result) {
       setError(result.error);
       setData(null);
@@ -52,16 +53,28 @@ export default function ProductDetail({ slug }: { slug: string }) {
     }
     setData({ product: result.product as DetailData["product"], access: result.access as Access, related: result.related as Partial<IProduct>[] });
     setError(null);
-  }, [slug]);
+  }, []);
+
+  const load = useCallback(async () => {
+    const result = await getPublishedProduct(slug);
+    applyProductResult(result);
+  }, [slug, applyProductResult]);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    load()
+    getPublishedProduct(slug)
+      .then((result) => {
+        if (!cancelled) applyProductResult(result);
+      })
       .catch(() => { if (!cancelled) setError("This product could not be loaded."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => {
+        if (!cancelled) {
+          setLoadedSlug(slug);
+          setLoading(false);
+        }
+      });
     return () => { cancelled = true; };
-  }, [load]);
+  }, [slug, applyProductResult]);
 
   const claim = async () => {
     if (!data?.product._id) return;
@@ -117,7 +130,7 @@ export default function ProductDetail({ slug }: { slug: string }) {
     }
   };
 
-  if (loading) {
+  if (loading || loadedSlug !== slug) {
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="h-4 w-40 animate-pulse rounded bg-muted" />
@@ -161,7 +174,7 @@ export default function ProductDetail({ slug }: { slug: string }) {
         <div className="min-w-0 space-y-6">
           <div className="overflow-hidden rounded-2xl border bg-muted">
             {product.thumbnail ? (
-              <img src={product.thumbnail} alt={product.title || ""} className="aspect-[16/9] w-full object-cover" />
+              <Image src={product.thumbnail} alt={product.title || ""} width={1280} height={720} unoptimized className="aspect-[16/9] w-full object-cover" />
             ) : (
               <div className="flex aspect-[16/9] items-center justify-center text-muted-foreground"><FileBox size={36} /></div>
             )}
@@ -260,6 +273,13 @@ export default function ProductDetail({ slug }: { slug: string }) {
             <Button type="button" variant="outline" className="mt-4 w-full gap-2" onClick={copyLink}>
               {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? "Link copied" : "Share product"}
             </Button>
+            {product.externalLink ? (
+              <Button asChild type="button" variant="outline" className="mt-2 w-full gap-2">
+                <a href={product.externalLink} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink size={15} /> {product.externalLinkLabel || "Video"}
+                </a>
+              </Button>
+            ) : null}
           </div>
 
         </aside>

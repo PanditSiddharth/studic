@@ -24,6 +24,8 @@ export interface ICourse {
   language?: string;
   estimatedMinutes?: number;
   prerequisites?: string[];
+  externalLink?: string;
+  externalLinkLabel?: string;
   publishedAt?: Date;
   createdOn?: Date;
   updatedAt?: Date;
@@ -49,6 +51,8 @@ const CourseSchema = new Schema<ICourse>(
     language: { type: String, default: "hi" },
     estimatedMinutes: { type: Number, min: 0, default: 0 },
     prerequisites: { type: [String], default: [] },
+    externalLink: { type: String, trim: true },
+    externalLinkLabel: { type: String, trim: true, maxlength: 40 },
     publishedAt: { type: Date },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }

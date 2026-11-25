@@ -146,8 +146,11 @@ export async function getBlog(opt: GetBlogOptions = {}): Promise<BlogResult | { 
         if (!isAdmin && isPaidBlog(blog)) {
             const access = await getItemAccess({ blogId: String(blog._id) });
             if (!access.owned) {
+                const lockedResult = { ...result };
+                delete lockedResult.externalLink;
+                delete lockedResult.externalLinkLabel;
                 return JSON.parse(JSON.stringify({
-                    ...result,
+                    ...lockedResult,
                     content: "",
                     locked: true,
                     access,

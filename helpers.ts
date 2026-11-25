@@ -36,13 +36,13 @@ export const blogFilter = (blog: any = {}): Partial<IBlog> => {
     const {
         _id, slug, title, status, description, thumbnail, content, tags, category,
         products, author, publishedAt, updatedAt, createdOn, estimatedMinutes,
-        course, seoTitle, seoDescription, accessType, price, currency
+        course, seoTitle, seoDescription, accessType, price, currency, externalLink, externalLinkLabel
     }: Partial<IBlog> = blog;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, status, description, thumbnail, content,
         tags, category: normalizeCategories(category), products, author: plainId(author), publishedAt, updatedAt,
         createdOn, estimatedMinutes, course: plainId(course), seoTitle, seoDescription,
-        accessType, price, currency
+        accessType, price, currency, externalLink, externalLinkLabel
     }));
 };
 
@@ -69,12 +69,13 @@ export const courseFilter = (course: any = {}): Partial<ICourse> => {
     const {
         _id, slug, tags, title, status, price, description, thumbnail, content,
         author, publishedAt, createdOn, updatedAt, accessType, currency, level,
-        language, estimatedMinutes, prerequisites, landingPage, products
+        language, estimatedMinutes, prerequisites, landingPage, products, externalLink, externalLinkLabel
     }: Partial<ICourse> = course;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, status, tags, price, description, thumbnail,
         content, author: plainId(author), publishedAt, createdOn, updatedAt,
-        accessType, currency, level, language, estimatedMinutes, prerequisites, landingPage, products
+        accessType, currency, level, language, estimatedMinutes, prerequisites, landingPage, products,
+        externalLink, externalLinkLabel
     }));
 };
 
@@ -96,12 +97,12 @@ export const productFilter = (product: any = {}, str?: any): Partial<IProduct> =
     const {
         _id, slug, title, price, description, thumbnail, tags, fileLink,
         publishedAt, status, currency, fileName, fileSize, mimeType,
-        downloadLimit, createdOn, updatedAt
+        downloadLimit, createdOn, updatedAt, externalLink, externalLinkLabel
     }: Partial<IProduct> = copy;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, price, description, thumbnail, tags,
         fileLink, publishedAt, status, currency, fileName,
-        fileSize, mimeType, downloadLimit, createdOn, updatedAt
+        fileSize, mimeType, downloadLimit, createdOn, updatedAt, externalLink, externalLinkLabel
     }));
 };
 

@@ -7,7 +7,7 @@ import MarkdownPreview from "@uiw/react-markdown-preview";
 import { useTheme } from "next-themes";
 import rehypeHighlight from "rehype-highlight";
 import {
-  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, Lock,
+  ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, ExternalLink, Lock,
 } from "lucide-react";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ export default function BlogArticle({ params }: { params: Params }) {
   const [accessCourse, setAccessCourse] = useState<BlogCourseSummary | null>(null);
   const [locked, setLocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadedSlug, setLoadedSlug] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [myContribution, setMyContribution] = useState<{ status?: string; submittedAt?: string | Date; reviewComment?: string } | null>(null);
 
@@ -64,12 +65,7 @@ export default function BlogArticle({ params }: { params: Params }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!slug) {
-      setError("This article could not be found");
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    if (!slug) return;
     getBlog({ slug, category })
       .then((result) => {
         if (cancelled) return;
@@ -89,7 +85,12 @@ export default function BlogArticle({ params }: { params: Params }) {
           .catch(() => { /* the edit button still works without this */ });
       })
       .catch(() => { if (!cancelled) setError("This article could not be loaded"); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => {
+        if (!cancelled) {
+          setLoadedSlug(slug);
+          setLoading(false);
+        }
+      });
     return () => { cancelled = true; };
   }, [slug, category]);
 
@@ -111,7 +112,17 @@ export default function BlogArticle({ params }: { params: Params }) {
 
   const relatedArticles = (blog?.relatedBlogs || []) as RelatedArticle[];
 
-  if (loading) return <Loader />;
+  if (!slug) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center px-4 text-center">
+        <h1 className="text-xl font-semibold">Article unavailable</h1>
+        <p className="mt-1 text-sm text-muted-foreground">This article could not be found</p>
+        <Button asChild variant="outline" className="mt-5"><Link href="/blogs"><ArrowLeft size={15} /> All articles</Link></Button>
+      </div>
+    );
+  }
+
+  if (loading || loadedSlug !== slug) return <Loader />;
 
   if (error || !blog) {
     return (
@@ -244,6 +255,16 @@ export default function BlogArticle({ params }: { params: Params }) {
         />
       )}
 
+      {blog.externalLink && !locked ? (
+        <div className="mx-auto mt-5 flex max-w-4xl justify-end px-3 sm:px-5">
+          <Button asChild variant="outline" className="gap-2">
+            <a href={blog.externalLink} target="_blank" rel="noopener noreferrer">
+              <ExternalLink size={15} /> {blog.externalLinkLabel || "Open link"}
+            </a>
+          </Button>
+        </div>
+      ) : null}
+
       {blog._id && !locked ? (
         <div className="mt-6 flex justify-center text-center">
           <SuggestEditDialog
@@ -265,7 +286,7 @@ export default function BlogArticle({ params }: { params: Params }) {
               <section>
                 <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Related course</h2>
                 <Link href={`/course/${accessCourse.slug}`} className="group block overflow-hidden rounded-lg border border-border transition-colors hover:bg-muted/60">
-                  {accessCourse.thumbnail && <img src={accessCourse.thumbnail} alt="" className="aspect-video w-full object-cover" />}
+                  {accessCourse.thumbnail && <Image src={accessCourse.thumbnail} alt="" width={400} height={225} unoptimized className="aspect-video w-full object-cover" />}
                   <div className="p-3">
                     <p className="text-sm font-medium leading-5 group-hover:underline">{accessCourse.title}</p>
                     {accessCourse.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{accessCourse.description}</p>}
@@ -281,7 +302,7 @@ export default function BlogArticle({ params }: { params: Params }) {
                   {relatedArticles.map((item) => (
                     <li key={item._id || item.slug}>
                       <Link href={`/t/${item.slug}`} className="group flex gap-2.5 rounded-lg p-1 transition-colors hover:bg-muted/60">
-                        {item.thumbnail && <img src={item.thumbnail} alt="" className="h-14 w-16 shrink-0 rounded-md object-cover" />}
+                        {item.thumbnail && <Image src={item.thumbnail} alt="" width={64} height={56} unoptimized className="h-14 w-16 shrink-0 rounded-md object-cover" />}
                         <span className="min-w-0">
                           <span className="block text-[13px] font-medium leading-5 group-hover:underline">{item.title}</span>
                           {item.description && <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{item.description}</span>}

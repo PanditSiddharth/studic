@@ -47,7 +47,11 @@ export async function getProductsFromServer(options: GetProductOptions): Promise
         
             products = products.map((product) => {
                 // Paid file links stay server-side; only administrators get them here.
-                if (user?.role !== "admin") product.fileLink = undefined;
+                if (user?.role !== "admin") {
+                    product.fileLink = undefined;
+                    product.externalLink = undefined;
+                    product.externalLinkLabel = undefined;
+                }
                 return product;
             });
         return JSON.parse(JSON.stringify({ products, totalProducts }));
@@ -62,8 +66,11 @@ export async function getProductFromServer(productId: string): Promise<IProduct 
         if (!product) return false
         const user = await getSessionUser()
 
-        if (user?.role != "admin")
+        if (user?.role != "admin") {
             product.fileLink = undefined
+            product.externalLink = undefined
+            product.externalLinkLabel = undefined
+        }
 
         return JSON.parse(JSON.stringify(product));
     } catch (error) {
@@ -144,12 +151,16 @@ export async function getOrder(transactionId: string): Promise<Record<string, IO
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Strip the paid file URL before sending a product to a public page. */
-const toPublicProduct = (product: any): Partial<IProduct> => {
+const toPublicProduct = (product: any, includeExternalLink = false): Partial<IProduct> => {
     // Mongoose documents keep schema fields behind getters, so spreading them
     // directly produces an empty object. Convert to a plain object first.
     const plain = product && typeof product.toObject === "function" ? product.toObject() : product;
     const filtered = productFilter(plain);
     delete (filtered as { fileLink?: string }).fileLink;
+    if (!includeExternalLink) {
+        delete filtered.externalLink;
+        delete filtered.externalLinkLabel;
+    }
     return filtered;
 };
 
@@ -199,7 +210,7 @@ export async function getPublishedProducts(options: PublicProductsOptions = {}) 
         ]);
 
         return JSON.parse(JSON.stringify({
-            products: products.map(toPublicProduct),
+            products: products.map((product) => toPublicProduct(product)),
             totalProducts,
         }));
     } catch (error: any) {
@@ -257,7 +268,7 @@ export async function getPublishedProduct(slug: string) {
         if (!product) return { error: "This product could not be found" };
 
         const access = await getItemAccess({ productId: String(product._id) });
-        const data = toPublicProduct(product);
+        const data = toPublicProduct(product, access.owned);
         (data as { tags?: string[] }).tags = (product.tags as string[]) || [];
 
         const tags = Array.isArray(product.tags) ? product.tags : [];
@@ -277,7 +288,7 @@ export async function getPublishedProduct(slug: string) {
         return JSON.parse(JSON.stringify({
             product: data,
             access,
-            related: related.map(toPublicProduct),
+            related: related.map((product) => toPublicProduct(product)),
         }));
     } catch (error: any) {
         console.error("Error loading product", error);

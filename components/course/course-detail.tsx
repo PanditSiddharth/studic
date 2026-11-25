@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import {
-  ArrowLeft, BadgeCheck, BookOpen, ChevronRight, Clock3, Download, Globe2,
+  ArrowLeft, BadgeCheck, BookOpen, ChevronRight, Clock3, Download, ExternalLink, Globe2,
   Layers, Loader2, Lock, Package, PlayCircle, ShieldCheck, Sparkles,
 } from "lucide-react";
 import Loader from "@/components/loader";
@@ -59,11 +59,11 @@ export default function CourseDetail({ slug }: { slug: string }) {
   const [course, setCourse] = useState<Partial<ICourse> | null>(null);
   const [access, setAccess] = useState<Access | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadedSlug, setLoadedSlug] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    const result = await getCourse({ slug, blogs: true, products: true });
+  const applyCourseResult = useCallback(async (result: Awaited<ReturnType<typeof getCourse>>) => {
     if ("error" in result) {
       setError(result.error);
       setCourse(null);
@@ -75,16 +75,28 @@ export default function CourseDetail({ slug }: { slug: string }) {
       const state = await getItemAccess({ courseId: String(result._id) });
       setAccess(state);
     }
-  }, [slug]);
+  }, []);
+
+  const load = useCallback(async () => {
+    const result = await getCourse({ slug, blogs: true, products: true });
+    await applyCourseResult(result);
+  }, [slug, applyCourseResult]);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    load()
+    getCourse({ slug, blogs: true, products: true })
+      .then((result) => {
+        if (!cancelled) return applyCourseResult(result);
+      })
       .catch(() => { if (!cancelled) setError("This course could not be loaded."); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => {
+        if (!cancelled) {
+          setLoadedSlug(slug);
+          setLoading(false);
+        }
+      });
     return () => { cancelled = true; };
-  }, [load]);
+  }, [slug, applyCourseResult]);
 
   const enroll = async () => {
     if (!course?._id) return;
@@ -129,7 +141,7 @@ export default function CourseDetail({ slug }: { slug: string }) {
     }
   };
 
-  if (loading) return <Loader />;
+  if (loading || loadedSlug !== slug) return <Loader />;
 
   if (error || !course) {
     return (
@@ -261,6 +273,14 @@ export default function CourseDetail({ slug }: { slug: string }) {
                   </Button>
                 )}
               </div>
+
+              {course.externalLink ? (
+                <Button asChild variant="outline" className="mt-2 w-full gap-2">
+                  <a href={course.externalLink} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink size={15} /> {course.externalLinkLabel || "Playlist"}
+                  </a>
+                </Button>
+              ) : null}
 
               {!access?.signedIn && (
                 <p className="mt-2 text-center text-[11px] text-muted-foreground">

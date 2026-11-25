@@ -4,14 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm, type FieldErrors } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import {
   ArrowDown, ArrowLeft, ArrowUp, BookOpen, Clock3, Eye, Globe2, GraduationCap,
-  ImageIcon, IndianRupee, Languages, ListVideo, Loader2, Package, Plus, Tags,
+  ExternalLink, ImageIcon, IndianRupee, Languages, ListVideo, Loader2, Package, Plus, Tags,
   Trash2, TriangleAlert,
 } from "lucide-react";
 import { ZodCourseSchema } from "@/modals/zod";
@@ -75,11 +75,12 @@ export default function AddCourseForm({
     mode: "onBlur",
   });
 
-  const title = form.watch("title") || "";
-  const slug = form.watch("slug") || "";
-  const description = form.watch("description") || "";
-  const status = form.watch("status") || "draft";
-  const accessType = form.watch("accessType");
+  const watched = useWatch({ control: form.control });
+  const title = watched.title || "";
+  const slug = watched.slug || "";
+  const description = watched.description || "";
+  const status = watched.status || "draft";
+  const accessType = watched.accessType;
 
   if (loadError) {
     return (
@@ -385,6 +386,23 @@ export default function AddCourseForm({
                 required
                 description="Shown on course cards and at the top of the course."
                 input={(field) => <ImageUpload onChange={field.onChange} img_src={field.value} />}
+              />
+            </FormSection>
+
+            <FormSection title="External link" description="Add an optional playlist or other resource link." icon={ExternalLink}>
+              <MyField
+                form={form}
+                name="externalLink"
+                label="Playlist or resource URL"
+                description="Leave blank to keep the course page unchanged."
+                input={(field) => <Input {...field} type="url" value={field.value ?? ""} placeholder="https://youtube.com/playlist?list=…" />}
+              />
+              <MyField
+                form={form}
+                name="externalLinkLabel"
+                label="Button label"
+                description="Leave blank to show “Playlist”."
+                input={(field) => <Input {...field} value={field.value ?? ""} maxLength={40} placeholder="Playlist" />}
               />
             </FormSection>
 

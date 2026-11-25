@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm, type FieldErrors } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import {
-  ArrowLeft, Download, FileBox, Globe2, ImageIcon, IndianRupee,
+  ArrowLeft, Download, ExternalLink, FileBox, Globe2, ImageIcon, IndianRupee,
   Loader2, Package, Tag, UploadCloud,
 } from "lucide-react";
 import { ZodProductScema } from "@/modals/zod";
@@ -63,11 +63,12 @@ export default function AddProductForm({ initialValue }: { initialValue?: IProdu
     mode: "onBlur",
   });
 
-  const title = form.watch("title") || "";
-  const slug = form.watch("slug") || "";
-  const description = form.watch("description") || "";
-  const status = form.watch("status") || "draft";
-  const price = form.watch("price") || 0;
+  const watched = useWatch({ control: form.control });
+  const title = watched.title || "";
+  const slug = watched.slug || "";
+  const description = watched.description || "";
+  const status = watched.status || "draft";
+  const price = watched.price || 0;
 
   const onInvalid = (errors: FieldErrors<ProductFormValues>) => {
     const first = Object.values(errors).find(Boolean) as { message?: string } | undefined;
@@ -275,12 +276,29 @@ export default function AddProductForm({ initialValue }: { initialValue?: IProdu
                   )}
                 />
               )}
-              {form.watch("fileLink") ? (
+              {watched.fileLink ? (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   {deliveryMode === "upload" ? <Download size={13} /> : <Globe2 size={13} />}
                   {deliveryMode === "upload" ? "A file is attached to this product." : "A product link is attached."}
                 </p>
               ) : null}
+            </FormSection>
+
+            <FormSection title="Video or resource link" description="Optional link related to this product." icon={ExternalLink}>
+              <MyField
+                form={form}
+                name="externalLink"
+                label="Video or resource URL"
+                description="Leave blank to keep the product page unchanged."
+                input={(field) => <Input {...field} type="url" value={field.value ?? ""} placeholder="https://youtube.com/watch?v=…" />}
+              />
+              <MyField
+                form={form}
+                name="externalLinkLabel"
+                label="Button label"
+                description="Leave blank to show “Video”."
+                input={(field) => <Input {...field} value={field.value ?? ""} maxLength={40} placeholder="Video" />}
+              />
             </FormSection>
 
             <FormSection title="Tags" description="Used in search and recommendations." icon={Tag}>

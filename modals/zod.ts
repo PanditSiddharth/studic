@@ -5,6 +5,16 @@ const slugSchema = z.string().trim().min(1, "Slug is required").max(180)
 
 const tagsSchema = z.array(z.string().trim().min(1)).default([]);
 const urlOrEmpty = z.string().url().or(z.literal("")).optional();
+const externalUrlOrEmpty = z.string().trim().url("Enter a valid link")
+  .refine((value) => {
+    try {
+      return ["http:", "https:"].includes(new URL(value).protocol);
+    } catch {
+      return false;
+    }
+  }, "Use an HTTP or HTTPS link")
+  .or(z.literal(""))
+  .optional();
 
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address");
 
@@ -81,6 +91,8 @@ export const ZodProductScema = z.object({
   tags: tagsSchema,
   thumbnail: urlOrEmpty,
   fileLink: z.string().url("Enter a valid file URL").or(z.literal("")).optional(),
+  externalLink: externalUrlOrEmpty,
+  externalLinkLabel: z.string().trim().max(40, "Keep the button label under 40 characters").optional(),
   slug: slugSchema,
   status: z.enum(["draft", "published", "archived"]).optional(),
   fileName: z.string().optional(),
@@ -110,6 +122,8 @@ export const ZodBlogSchema = z.object({
   estimatedMinutes: z.number().int().nonnegative().optional(),
   seoTitle: z.string().max(160, "Keep the SEO title under 160 characters").optional(),
   seoDescription: z.string().max(320, "Keep the SEO description under 320 characters").optional(),
+  externalLink: externalUrlOrEmpty,
+  externalLinkLabel: z.string().trim().max(40, "Keep the button label under 40 characters").optional(),
   publishedAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
   _id: z.string().optional(),
@@ -129,6 +143,8 @@ export const ZodCourseSchema = z.object({
   tags: tagsSchema,
   author: z.string().optional(),
   landingPage: z.string().optional(),
+  externalLink: externalUrlOrEmpty,
+  externalLinkLabel: z.string().trim().max(40, "Keep the button label under 40 characters").optional(),
   level: z.enum(["beginner", "intermediate", "advanced", "all-levels"]).optional(),
   language: z.string().optional(),
   estimatedMinutes: z.number().int().nonnegative().optional(),

@@ -1,6 +1,8 @@
 import AdminContributionsPage from "@/components/admin/admin-contributions-page";
 import { getContributionQueue } from "@/server-functions/contribution";
 
+export const dynamic = "force-dynamic";
+
 export default async function ContributionsAdminRoute() {
   const queue = await getContributionQueue();
 
