@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import {
   ArrowLeft, Download, FileBox, Globe2, ImageIcon, IndianRupee,
-  Loader2, Package, Tag,
+  Loader2, Package, Tag, UploadCloud,
 } from "lucide-react";
 import { ZodProductScema } from "@/modals/zod";
 import type { IProduct } from "@/modals/product.model";
@@ -40,10 +40,22 @@ const money = (value: number) => new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 }).format(value || 0);
 
+function isCloudinaryUpload(url?: string) {
+  try {
+    const parsed = new URL(url || "");
+    return parsed.hostname === "res.cloudinary.com" && /^\/[^/]+\/raw\/upload\//.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 export default function AddProductForm({ initialValue }: { initialValue?: IProduct }) {
   const router = useRouter();
   const isEditing = Boolean(initialValue?._id);
   const [slugLocked, setSlugLocked] = useState(Boolean(initialValue?.slug));
+  const [deliveryMode, setDeliveryMode] = useState<"upload" | "link">(() =>
+    initialValue?.fileLink && !isCloudinaryUpload(initialValue.fileLink) ? "link" : "upload"
+  );
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(ZodProductScema),
@@ -65,6 +77,10 @@ export default function AddProductForm({ initialValue }: { initialValue?: IProdu
   const onSubmit = async (data: ProductFormValues) => {
     if (!isValidSlug(data.slug)) {
       form.setError("slug", { message: "Use lowercase letters, numbers and single hyphens only" });
+      return;
+    }
+    if (!data.fileLink?.trim()) {
+      form.setError("fileLink", { message: "Upload a file or add a product link." });
       return;
     }
 
@@ -191,27 +207,78 @@ export default function AddProductForm({ initialValue }: { initialValue?: IProdu
             </FormSection>
 
             <FormSection title="Delivery" description="The file buyers receive after purchase." icon={FileBox}>
-              <MyField
-                form={form}
-                name="fileLink"
-                label="Downloadable file"
-                description="Upload the deliverable to Cloudinary. Buyers receive this secure link."
-                input={(field) => (
-                  <FileUpload
-                    onChange={(src) => {
-                      field.onChange(src);
-                      const rawName = src.split("/").pop()?.split("?")[0] || "";
-                      let fileName = rawName;
-                      try { fileName = decodeURIComponent(rawName); } catch { /* keep raw name */ }
-                      form.setValue("fileName", fileName, { shouldDirty: true });
-                    }}
-                    value={field.value}
-                  />
-                )}
-              />
+              <div>
+                <p className="mb-2 text-sm font-medium">Delivery method</p>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Product delivery method">
+                  {([
+                    { value: "upload", label: "Upload a file", icon: UploadCloud },
+                    { value: "link", label: "Add a link", icon: Globe2 },
+                  ] as const).map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={deliveryMode === value}
+                      onClick={() => {
+                        if (deliveryMode === value) return;
+                        setDeliveryMode(value);
+                        form.setValue("fileLink", "", { shouldDirty: true, shouldValidate: true });
+                        form.setValue("fileName", "", { shouldDirty: true });
+                        form.setValue("fileSize", 0, { shouldDirty: true });
+                        form.setValue("mimeType", "", { shouldDirty: true });
+                      }}
+                      className={`flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        deliveryMode === value
+                          ? "border-primary bg-primary/5 font-medium text-primary"
+                          : "text-muted-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <Icon size={15} /> {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {deliveryMode === "upload" ? (
+                <MyField
+                  form={form}
+                  name="fileLink"
+                  label="Downloadable file"
+                  description="Upload the deliverable to Cloudinary. Buyers get access after purchase."
+                  input={(field) => (
+                    <FileUpload
+                      onChange={(src) => {
+                        field.onChange(src);
+                        const rawName = src.split("/").pop()?.split("?")[0] || "";
+                        let fileName = rawName;
+                        try { fileName = decodeURIComponent(rawName); } catch { /* keep raw name */ }
+                        form.setValue("fileName", fileName, { shouldDirty: true });
+                      }}
+                      value={field.value}
+                    />
+                  )}
+                />
+              ) : (
+                <MyField
+                  form={form}
+                  name="fileLink"
+                  label="Product link"
+                  required
+                  description="Paste a Google Drive or other HTTPS share link. For Drive, allow access to anyone with the link."
+                  input={(field) => (
+                    <Input
+                      {...field}
+                      type="url"
+                      value={field.value ?? ""}
+                      placeholder="https://drive.google.com/file/d/..."
+                      autoComplete="url"
+                    />
+                  )}
+                />
+              )}
               {form.watch("fileLink") ? (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Download size={13} /> A file is attached to this product.
+                  {deliveryMode === "upload" ? <Download size={13} /> : <Globe2 size={13} />}
+                  {deliveryMode === "upload" ? "A file is attached to this product." : "A product link is attached."}
                 </p>
               ) : null}
             </FormSection>

@@ -19,6 +19,7 @@ import { getMyArticleContribution } from "@/server-functions/contribution";
 import SuggestEditDialog from "@/components/blog/suggest-edit-dialog";
 import ArticleContributorsCard, { ContributorLine } from "@/components/blog/article-contributors";
 import { startCheckout } from "@/server-functions/library";
+import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 import { formatPrice } from "@/components/product/product-card";
 import { cleanArticleContent } from "@/modals/utils";
 import type { IBlog } from "@/modals/blog.model";
@@ -176,26 +177,39 @@ export default function Blog(props: any) {
     }
     setBusy(true);
     try {
-      const result = await startCheckout({ courseId: String(course._id) });
-      if (result.error) {
-        if (result.requiresAuth) {
-          router.push(`/auth?callbackUrl=${encodeURIComponent(pathname)}`);
+      if (course.accessType === "free" || !Number(course.price)) {
+        const result = await startCheckout({ courseId: String(course._id) });
+        if (result.error) {
+          if (result.requiresAuth) {
+            router.push(`/auth?callbackUrl=${encodeURIComponent(pathname)}`);
+            return;
+          }
+          toast.error(result.error);
           return;
         }
-        toast.error(result.error);
+        if (result.status === "granted") {
+          toast.success("You are enrolled. Enjoy the course!");
+          window.location.reload();
+        } else if (result.status === "pending") {
+          toast.info(result.message || "Order saved and awaiting confirmation.");
+          setAccess((current) => current ? { ...current, orderStatus: "pending", orderId: result.orderId || current.orderId } : current);
+        }
         return;
       }
-      if (result.status === "pending") {
-        toast.info(result.message || "Order saved and awaiting confirmation.");
-        setAccess((current) => current ? { ...current, orderStatus: "pending", orderId: result.orderId || current.orderId } : current);
-      } else {
+
+      const paid = await openRazorpayCheckout("course", String(course._id));
+      if (paid) {
         toast.success("Payment confirmed. Enjoy the course!");
         window.location.reload();
+      } else {
+        toast.info("Payment was cancelled.");
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start checkout.");
     } finally {
       setBusy(false);
     }
-  }, [access?.signedIn, course?._id, pathname, router]);
+  }, [access?.signedIn, course, pathname, router]);
 
   if (loading) return <Loader />;
 
@@ -257,9 +271,9 @@ export default function Blog(props: any) {
                 <p className="mt-0.5 text-2xl font-semibold">{courseIsFree ? "Free" : formatPrice(course.price, course.currency)}</p>
               </div>
               <div className="flex flex-col gap-2 sm:min-w-[230px]">
-                <Button onClick={buyCourse} disabled={busy || pending} className="gap-2">
+                <Button onClick={buyCourse} disabled={busy || (pending && courseIsFree)} className="gap-2">
                   {busy ? <Loader2 size={16} className="animate-spin" /> : pending ? <BadgeCheck size={16} /> : <ShieldCheck size={16} />}
-                  {pending ? "Awaiting confirmation" : !access?.signedIn ? (courseIsFree ? "Sign in to enroll" : "Sign in to buy") : courseIsFree ? "Enroll for free" : "Buy course"}
+                  {pending ? (courseIsFree ? "Awaiting confirmation" : "Pay now") : !access?.signedIn ? (courseIsFree ? "Sign in to enroll" : "Sign in to buy") : courseIsFree ? "Enroll for free" : "Buy course"}
                 </Button>
                 <Button asChild variant="outline">
                   <Link href={`/course/${course.slug}`}>View course details</Link>
@@ -269,7 +283,7 @@ export default function Blog(props: any) {
 
             {pending && (
               <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">
-                Order <span className="font-medium text-foreground">{access?.orderId}</span> is waiting for administrator confirmation.
+                Previous order <span className="font-medium text-foreground">{access?.orderId}</span> is still pending.
               </p>
             )}
             {!access?.signedIn && (

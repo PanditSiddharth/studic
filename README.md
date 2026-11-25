@@ -196,6 +196,9 @@ NEXT_PUBLIC_DOMAIN=https://www.example.com
 # Admin/payment configuration used by the deployment
 SKEY=your_payment_key
 MID=your_payment_merchant_id
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
 SUPER_ADMIN_EMAILS=admin@example.com
 
 # Brevo SMTP credentials used by the admin mailer
@@ -205,7 +208,9 @@ MAIL_PASSWORD=your_smtp_password
 
 Do not commit `.env`, `.env.local`, or any secret values. For local development, `DOMAIN` and
 `NEXT_PUBLIC_DOMAIN` can both be `http://localhost:3000`. `NEXT_PUBLIC_*` values are exposed to
-the browser, so never put private credentials in them.
+the browser, so never put private credentials in them. Set the Razorpay key ID in
+`NEXT_PUBLIC_RAZORPAY_KEY_ID`; keep `RAZORPAY_KEY_SECRET` server-only. Configure both keys in
+your Razorpay test account to test product or course checkout.
 
 4. **Run the development server**
 ```bash

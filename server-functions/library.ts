@@ -155,9 +155,8 @@ type CheckoutResult = {
 };
 
 /**
- * Grant access to a free item instantly, or open a pending order for a paid
- * item. No payment provider is connected yet, so paid orders stay pending and
- * are visible on the profile/orders page until an administrator confirms them.
+ * Grant access to a free item instantly, or open a manual pending order.
+ * Storefront paid checkouts use the Razorpay API routes.
  */
 export async function startCheckout(input: ItemRef): Promise<CheckoutResult> {
   const session = await getSessionUser();
@@ -219,7 +218,7 @@ export async function startCheckout(input: ItemRef): Promise<CheckoutResult> {
       return {
         status: "pending" as const,
         orderId: order.orderId,
-        message: "Order saved. Online payments are not connected yet, so you have not been charged — an administrator will confirm your order.",
+        message: "Manual order saved and pending administrator confirmation.",
       };
     }
 
@@ -287,7 +286,7 @@ export async function startCheckout(input: ItemRef): Promise<CheckoutResult> {
       return {
         status: "pending" as const,
         orderId: order.orderId,
-        message: "Order saved. Online payments are not connected yet, so you have not been charged — an administrator will confirm your order.",
+        message: "Manual order saved and pending administrator confirmation.",
       };
     }
 

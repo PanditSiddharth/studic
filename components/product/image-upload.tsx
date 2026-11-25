@@ -14,7 +14,7 @@ interface ImageUploadProps {
 }
 
 type CropperProps = {
-  file: File
+  preview: string
   aspectRatio: number
   onCancel: () => void
   onUploaded: (src: string) => void
@@ -39,9 +39,10 @@ async function uploadToCloudinary(blob: Blob, fileName: string) {
   return result.secure_url
 }
 
-function ImageCropper({ file, aspectRatio, onCancel, onUploaded }: CropperProps) {
-  const [preview, setPreview] = useState('')
+function ImageCropper({ preview, aspectRatio, onCancel, onUploaded }: CropperProps) {
   const [zoom, setZoom] = useState(1)
+  const [minZoom, setMinZoom] = useState(1)
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 })
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
@@ -50,17 +51,28 @@ function ImageCropper({ file, aspectRatio, onCancel, onUploaded }: CropperProps)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const url = URL.createObjectURL(file)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+    const image = new window.Image()
+    image.onload = () => {
+      const sourceRatio = image.naturalWidth / image.naturalHeight
+      const fitZoom = Math.min(1, aspectRatio / sourceRatio, sourceRatio / aspectRatio)
+      setImageSize({ width: image.naturalWidth, height: image.naturalHeight })
+      setMinZoom(fitZoom)
+      setZoom(fitZoom)
+      setPan({ x: 0, y: 0 })
+    }
+    image.src = preview
+    return () => {
+      image.onload = null
+    }
+  }, [preview, aspectRatio])
 
   const moveImage = (event: PointerEvent<HTMLDivElement>) => {
     if (!dragging) return
     const area = cropAreaRef.current
-    if (!area) return
-    const maxX = area.clientWidth * Math.max(0, zoom - 1) / 2 + area.clientWidth * 0.18
-    const maxY = area.clientHeight * Math.max(0, zoom - 1) / 2 + area.clientHeight * 0.18
+    if (!area || !imageSize.width || !imageSize.height) return
+    const imageScale = Math.min(area.clientWidth / imageSize.width, area.clientHeight / imageSize.height) * zoom / minZoom
+    const maxX = Math.max(0, (imageSize.width * imageScale - area.clientWidth) / 2)
+    const maxY = Math.max(0, (imageSize.height * imageScale - area.clientHeight) / 2)
     setPan({
       x: Math.max(-maxX, Math.min(maxX, dragStart.current.panX + event.clientX - dragStart.current.x)),
       y: Math.max(-maxY, Math.min(maxY, dragStart.current.panY + event.clientY - dragStart.current.y)),
@@ -88,12 +100,10 @@ function ImageCropper({ file, aspectRatio, onCancel, onUploaded }: CropperProps)
       cropHeight /= zoom
       const area = cropAreaRef.current
       const visualScale = area
-        ? Math.max(area.clientWidth / image.naturalWidth, area.clientHeight / image.naturalHeight) * zoom
-        : zoom
+        ? Math.min(area.clientWidth / image.naturalWidth, area.clientHeight / image.naturalHeight) * zoom / minZoom
+        : zoom / minZoom
       const centerX = image.naturalWidth / 2 - pan.x / visualScale
       const centerY = image.naturalHeight / 2 - pan.y / visualScale
-      const sourceX = Math.max(0, Math.min(image.naturalWidth - cropWidth, centerX - cropWidth / 2))
-      const sourceY = Math.max(0, Math.min(image.naturalHeight - cropHeight, centerY - cropHeight / 2))
 
       const canvas = document.createElement('canvas')
       canvas.width = Math.round(Math.min(1600, cropWidth))
@@ -101,16 +111,15 @@ function ImageCropper({ file, aspectRatio, onCancel, onUploaded }: CropperProps)
       const context = canvas.getContext('2d')
       if (!context) throw new Error('Your browser cannot process this image')
       context.imageSmoothingQuality = 'high'
+      context.fillStyle = '#000'
+      context.fillRect(0, 0, canvas.width, canvas.height)
+      const outputScale = canvas.width / cropWidth
       context.drawImage(
         image,
-        sourceX,
-        sourceY,
-        cropWidth,
-        cropHeight,
-        0,
-        0,
-        canvas.width,
-        canvas.height,
+        (cropWidth / 2 - centerX) * outputScale,
+        (cropHeight / 2 - centerY) * outputScale,
+        image.naturalWidth * outputScale,
+        image.naturalHeight * outputScale,
       )
       const blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not prepare the cropped image')), 'image/jpeg', 0.9)
@@ -156,21 +165,20 @@ function ImageCropper({ file, aspectRatio, onCancel, onUploaded }: CropperProps)
               unoptimized
               draggable={false}
               className="pointer-events-none object-contain transition-transform duration-75"
-              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
+              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom / minZoom})` }}
             />
           ) : null}
           <div
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,.45)]"
-            style={{ width: "92%", aspectRatio }}
+            className="pointer-events-none absolute inset-0 border-2 border-white"
           />
         </div>
         <div className="mt-4 flex items-center gap-3">
           <ZoomOut size={16} className="text-muted-foreground" />
           <input
             type="range"
-            min="1"
+            min={minZoom}
             max="3"
-            step="0.05"
+            step="0.01"
             value={zoom}
             onChange={(event) => {
               setZoom(Number(event.target.value))
@@ -196,8 +204,13 @@ function ImageCropper({ file, aspectRatio, onCancel, onUploaded }: CropperProps)
 
 export function CloudinaryImageUpload({ onChange, img_src, className, aspectRatio = 16 / 9, preview = true }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [file, setFile] = useState<File | null>(null)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!selectedImage) return
+    return () => URL.revokeObjectURL(selectedImage)
+  }, [selectedImage])
 
   const chooseFile = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files?.[0]
@@ -206,7 +219,7 @@ export function CloudinaryImageUpload({ onChange, img_src, className, aspectRati
     if (!selected.type.startsWith('image/')) return setError('Choose a JPG, PNG or WebP image.')
     if (selected.size > 5_000_000) return setError('Image must be smaller than 5 MB.')
     setError('')
-    setFile(selected)
+    setSelectedImage(URL.createObjectURL(selected))
   }
 
   return (
@@ -237,7 +250,14 @@ export function CloudinaryImageUpload({ onChange, img_src, className, aspectRati
       </button>
       <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseFile} className="sr-only" />
       {error ? <p className="mt-1 text-xs text-destructive">{error}</p> : null}
-      {file ? <ImageCropper file={file} aspectRatio={aspectRatio} onCancel={() => setFile(null)} onUploaded={(src) => { onChange(src); setFile(null) }} /> : null}
+      {selectedImage ? (
+        <ImageCropper
+          preview={selectedImage}
+          aspectRatio={aspectRatio}
+          onCancel={() => setSelectedImage(null)}
+          onUploaded={(src) => { onChange(src); setSelectedImage(null) }}
+        />
+      ) : null}
     </>
   )
 }

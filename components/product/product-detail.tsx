@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import ProductCard, { formatPrice } from "@/components/product/product-card";
 import { getPublishedProduct } from "@/server-functions/product";
 import { startCheckout } from "@/server-functions/library";
+import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 import type { IProduct } from "@/modals/product.model";
 import { cn } from "@/modals/utils";
 import "@/components/themes/codetheme.css";
@@ -70,6 +71,18 @@ export default function ProductDetail({ slug }: { slug: string }) {
     }
     setBusy(true);
     try {
+      if (!isFree) {
+        const paid = await openRazorpayCheckout("product", String(data.product._id));
+        if (paid) {
+          toast.success("Payment confirmed. The product is in your library.");
+          await load();
+          router.refresh();
+        } else {
+          toast.info("Payment was cancelled.");
+        }
+        return;
+      }
+
       const result = await startCheckout({ productId: String(data.product._id) });
       if (result.error) {
         if (result.requiresAuth) {
@@ -86,6 +99,8 @@ export default function ProductDetail({ slug }: { slug: string }) {
       }
       await load();
       router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start checkout.");
     } finally {
       setBusy(false);
     }
@@ -218,12 +233,12 @@ export default function ProductDetail({ slug }: { slug: string }) {
               ) : (
                 <Button className="h-11 w-full gap-2" onClick={claim} disabled={busy}>
                   {busy ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-                  {isFree ? "Get it free" : isPending ? "Order pending" : "Buy now"}
+                  {isFree ? isPending ? "Order pending" : "Get it free" : isPending ? "Pay now" : "Buy now"}
                 </Button>
               )}
               {isPending && !known && (
                 <p className="text-center text-[11px] leading-4 text-muted-foreground">
-                  Order <span className="font-medium text-foreground">{access.orderId}</span> is waiting for confirmation.
+                  Previous order <span className="font-medium text-foreground">{access.orderId}</span> is still pending.
                 </p>
               )}
               {!access.signedIn && (

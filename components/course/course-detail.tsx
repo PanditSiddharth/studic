@@ -11,8 +11,12 @@ import {
 } from "lucide-react";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import { getCourse } from "@/server-functions/course";
 import { getItemAccess, startCheckout } from "@/server-functions/library";
+import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 import type { ICourse } from "@/modals/course.model";
 import { formatPrice } from "@/components/product/product-card";
 import { cn } from "@/modals/utils";
@@ -25,6 +29,29 @@ const levelLabels: Record<string, string> = {
   advanced: "Advanced",
   "all-levels": "All levels",
 };
+
+const descriptionHeadings = new Set([
+  "topics covered",
+  "who should enroll?",
+  "learning objectives",
+  "course information",
+  "important note",
+]);
+
+function getDescriptionParagraphs(description: string) {
+  return description
+    .replace(/\r\n?/g, "\n")
+    .replace(/\s+(Topics Covered)\b/i, "\n\n$1\n\n")
+    .trim()
+    .split(/\n\s*\n/)
+    .flatMap((block) =>
+      block
+        .split(/\n+/)
+        .flatMap((line) => line.split(/(?<=[.!?])\s+(?=[A-Z0-9])/))
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean)
+    );
+}
 
 export default function CourseDetail({ slug }: { slug: string }) {
   const router = useRouter();
@@ -67,6 +94,18 @@ export default function CourseDetail({ slug }: { slug: string }) {
     }
     setBusy(true);
     try {
+      if (!isFree) {
+        const paid = await openRazorpayCheckout("course", String(course._id));
+        if (paid) {
+          toast.success("Payment confirmed. You are enrolled.");
+          await load();
+          router.refresh();
+        } else {
+          toast.info("Payment was cancelled.");
+        }
+        return;
+      }
+
       const result = await startCheckout({ courseId: String(course._id) });
       if (result.error) {
         if (result.requiresAuth) {
@@ -83,6 +122,8 @@ export default function CourseDetail({ slug }: { slug: string }) {
       }
       await load();
       router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start checkout.");
     } finally {
       setBusy(false);
     }
@@ -105,12 +146,16 @@ export default function CourseDetail({ slug }: { slug: string }) {
   const bundledProducts = (Array.isArray(course.products) ? course.products : []).filter(
     (product: any) => product && typeof product === "object" && product.slug
   ) as any[];
+  const showLessonsArea = lessons.length > 0 || bundledProducts.length === 0;
   const isFree = course.accessType === "free" || !Number(course.price);
   const minutes = Number(course.estimatedMinutes || 0);
   const duration = minutes >= 60 ? `${Math.round(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ""}` : minutes ? `${minutes}m` : null;
   const owned = Boolean(access?.owned);
   const pending = access?.orderStatus === "pending";
   const needsPurchase = !isFree && !owned;
+  const courseDescription = String(course.description || "").trim();
+  const descriptionPreview = courseDescription.replace(/\s+/g, " ");
+  const descriptionParagraphs = getDescriptionParagraphs(courseDescription);
   const openPurchase = () => {
     document.getElementById("course-access")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
@@ -144,7 +189,35 @@ export default function CourseDetail({ slug }: { slug: string }) {
           </div>
 
           <div className="space-y-4 p-5">
-            {course.description && <p className="text-sm leading-6 text-muted-foreground">{course.description}</p>}
+            {courseDescription && (
+              <Dialog>
+                <div>
+                  <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{descriptionPreview}</p>
+                  {descriptionPreview.length > 180 && (
+                    <DialogTrigger asChild>
+                      <button type="button" className="mt-1 text-sm font-medium text-primary hover:underline">
+                        Read more
+                      </button>
+                    </DialogTrigger>
+                  )}
+                </div>
+                <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-2xl overflow-hidden sm:w-full">
+                  <DialogHeader>
+                    <DialogTitle>{course.title} — Course description</DialogTitle>
+                    <DialogDescription>Full course overview and topics.</DialogDescription>
+                  </DialogHeader>
+                  <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-2 text-sm leading-7 text-muted-foreground">
+                    {descriptionParagraphs.map((paragraph, index) => (
+                      descriptionHeadings.has(paragraph.toLowerCase()) ? (
+                        <h3 key={index} className="pt-2 font-semibold text-foreground">{paragraph}</h3>
+                      ) : (
+                        <p key={index} className="whitespace-pre-wrap">{paragraph}</p>
+                      )
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-lg border bg-muted/30 px-3 py-2">
@@ -182,9 +255,9 @@ export default function CourseDetail({ slug }: { slug: string }) {
                     <a href="#course-content"><PlayCircle size={16} /> Continue course</a>
                   </Button>
                 ) : (
-                  <Button className="w-full gap-2" onClick={enroll} disabled={busy || pending}>
+                  <Button className="w-full gap-2" onClick={enroll} disabled={busy || (pending && isFree)}>
                     {busy ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-                    {isFree ? "Enroll for free" : pending ? "Awaiting confirmation" : "Buy course"}
+                    {isFree ? pending ? "Awaiting confirmation" : "Enroll for free" : pending ? "Pay now" : "Buy course"}
                   </Button>
                 )}
               </div>
@@ -201,7 +274,7 @@ export default function CourseDetail({ slug }: { slug: string }) {
               )}
               {pending && !owned && (
                 <p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">
-                  Order <span className="font-medium text-foreground">{access?.orderId}</span> is waiting for confirmation.
+                  Previous order <span className="font-medium text-foreground">{access?.orderId}</span> is still pending.
                 </p>
               )}
               {owned && access?.progressPercent ? (
@@ -227,100 +300,104 @@ export default function CourseDetail({ slug }: { slug: string }) {
         </aside>
 
         <section id="course-content" className="min-w-0">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                <Sparkles size={12} /> Course
-              </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight">Course content</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {lessons.length} lesson{lessons.length === 1 ? "" : "s"} in order — follow them at your own pace.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
-              <Layers size={12} /> {lessons.length} lessons
-            </span>
-          </div>
+          {showLessonsArea && (
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                    <Sparkles size={12} /> Course
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight">Course content</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {lessons.length} lesson{lessons.length === 1 ? "" : "s"} in order — follow them at your own pace.
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
+                  <Layers size={12} /> {lessons.length} lessons
+                </span>
+              </div>
 
-          {lessons.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-dashed bg-muted/20 px-6 py-12 text-center">
-              <BookOpen size={24} className="mx-auto text-muted-foreground" />
-              <p className="mt-3 font-medium">Lessons are on the way</p>
-              <p className="mt-1 text-sm text-muted-foreground">This course is still being assembled.</p>
-            </div>
-          ) : (
-            <ol className="mt-4 space-y-2">
-              {lessons.map((lesson, index) => {
-                const lessonIsPaid = lesson?.accessType === "paid" || lesson?.status === "paid" || Number(lesson?.price) > 0;
-                const lessonLocked = needsPurchase || (lessonIsPaid && !owned);
-                const rowClassName = cn(
-                  "group flex w-full items-stretch gap-3 rounded-xl border bg-card p-2.5 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
-                  index === 0 && !lessonLocked && "border-primary/20",
-                  lessonLocked && "hover:border-primary/30"
-                );
-                const rowContent = (
-                  <>
-                    <span className="flex w-7 shrink-0 items-center justify-center text-xs font-medium text-muted-foreground">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-36">
-                      {lesson?.thumbnail ? (
-                        <Image src={lesson.thumbnail} alt={lesson.title || ""} fill sizes="144px" className="object-cover" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-muted-foreground"><PlayCircle size={18} /></div>
-                      )}
-                      {lessonLocked ? (
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
-                          <Lock size={18} />
+              {lessons.length === 0 ? (
+                <div className="mt-4 rounded-2xl border border-dashed bg-muted/20 px-6 py-12 text-center">
+                  <BookOpen size={24} className="mx-auto text-muted-foreground" />
+                  <p className="mt-3 font-medium">Lessons are on the way</p>
+                  <p className="mt-1 text-sm text-muted-foreground">This course is still being assembled.</p>
+                </div>
+              ) : (
+                <ol className="mt-4 space-y-2">
+                  {lessons.map((lesson, index) => {
+                    const lessonIsPaid = lesson?.accessType === "paid" || lesson?.status === "paid" || Number(lesson?.price) > 0;
+                    const lessonLocked = needsPurchase || (lessonIsPaid && !owned);
+                    const rowClassName = cn(
+                      "group flex w-full items-stretch gap-3 rounded-xl border bg-card p-2.5 text-left transition-colors hover:border-primary/30 hover:bg-muted/40",
+                      index === 0 && !lessonLocked && "border-primary/20",
+                      lessonLocked && "hover:border-primary/30"
+                    );
+                    const rowContent = (
+                      <>
+                        <span className="flex w-7 shrink-0 items-center justify-center text-xs font-medium text-muted-foreground">
+                          {String(index + 1).padStart(2, "0")}
                         </span>
-                      ) : (
-                        <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition-all group-hover:bg-black/30 group-hover:opacity-100">
-                          <PlayCircle size={22} />
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1 py-0.5">
-                      <p className="line-clamp-2 text-sm font-medium leading-5 group-hover:text-primary">{lesson?.title || "Untitled lesson"}</p>
-                      {lesson?.description && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{lesson.description}</p>}
-                      <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                        {lessonLocked ? <><Lock size={10} /> {lessonIsPaid && !needsPurchase ? "Paid article" : "Unlock with purchase"}</> : index === 0 ? "Start here" : "Lesson"} <ChevronRight size={11} />
-                      </p>
-                    </div>
-                  </>
-                );
+                        <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-36">
+                          {lesson?.thumbnail ? (
+                            <Image src={lesson.thumbnail} alt={lesson.title || ""} fill sizes="144px" className="object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-muted-foreground"><PlayCircle size={18} /></div>
+                          )}
+                          {lessonLocked ? (
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
+                              <Lock size={18} />
+                            </span>
+                          ) : (
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition-all group-hover:bg-black/30 group-hover:opacity-100">
+                              <PlayCircle size={22} />
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1 py-0.5">
+                          <p className="line-clamp-2 text-sm font-medium leading-5 group-hover:text-primary">{lesson?.title || "Untitled lesson"}</p>
+                          {lesson?.description && <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{lesson.description}</p>}
+                          <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                            {lessonLocked ? <><Lock size={10} /> {lessonIsPaid && !needsPurchase ? "Paid article" : "Unlock with purchase"}</> : index === 0 ? "Start here" : "Lesson"} <ChevronRight size={11} />
+                          </p>
+                        </div>
+                      </>
+                    );
 
-                return (
-                  <li key={String(lesson?._id || index)}>
-                    {lessonLocked ? (
-                      <button type="button" onClick={openPurchase} className={rowClassName}>
-                        {rowContent}
-                      </button>
-                    ) : (
-                      <Link href={`/course/${course.slug}/${lesson.slug}`} className={rowClassName}>
-                        {rowContent}
-                      </Link>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
+                    return (
+                      <li key={String(lesson?._id || index)}>
+                        {lessonLocked ? (
+                          <button type="button" onClick={openPurchase} className={rowClassName}>
+                            {rowContent}
+                          </button>
+                        ) : (
+                          <Link href={`/course/${course.slug}/${lesson.slug}`} className={rowClassName}>
+                            {rowContent}
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
 
-          {needsPurchase && lessons.length > 0 && (
-            <div className="mt-5 flex items-start gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
-              <Lock size={14} className="mt-0.5 shrink-0" />
-              <p>Purchase this course to unlock all {lessons.length} lesson{lessons.length === 1 ? "" : "s"} and keep it in your library.</p>
-            </div>
-          )}
-          {!needsPurchase && !owned && lessons.length > 0 && (
-            <div className="mt-5 flex items-start gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
-              <Lock size={14} className="mt-0.5 shrink-0" />
-              <p>Enroll to track your progress through every lesson and keep this course in your library.</p>
-            </div>
+              {needsPurchase && lessons.length > 0 && (
+                <div className="mt-5 flex items-start gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                  <Lock size={14} className="mt-0.5 shrink-0" />
+                  <p>Purchase this course to unlock all {lessons.length} lesson{lessons.length === 1 ? "" : "s"} and keep it in your library.</p>
+                </div>
+              )}
+              {!needsPurchase && !owned && lessons.length > 0 && (
+                <div className="mt-5 flex items-start gap-2 rounded-xl border border-dashed bg-muted/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
+                  <Lock size={14} className="mt-0.5 shrink-0" />
+                  <p>Enroll to track your progress through every lesson and keep this course in your library.</p>
+                </div>
+              )}
+            </>
           )}
 
           {bundledProducts.length > 0 && (
-            <div className="mt-10 border-t pt-7">
+            <div className={lessons.length > 0 ? "mt-10 border-t pt-7" : "pt-0"}>
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
                   <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">

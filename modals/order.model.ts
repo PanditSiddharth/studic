@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Model } from "mongoose";
 
 export type OrderStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded" | "partially_refunded";
-export type PaymentProvider = "phonepe" | "manual" | "other";
+export type PaymentProvider = "phonepe" | "razorpay" | "manual" | "other";
 
 export interface IOrder {
   _id?: string;
@@ -37,7 +37,7 @@ const OrderSchema = new Schema<IOrder>(
     itemType: { type: String, enum: ["product", "course", "blog"] },
     amount: { type: Number, min: 0, required: true, default: 0 },
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
-    paymentProvider: { type: String, enum: ["phonepe", "manual", "other"], default: "phonepe" },
+    paymentProvider: { type: String, enum: ["phonepe", "razorpay", "manual", "other"], default: "phonepe" },
     providerOrderId: { type: String, index: true, sparse: true },
     providerPaymentId: { type: String, index: true, sparse: true },
     failureReason: { type: String, maxlength: 1000 },

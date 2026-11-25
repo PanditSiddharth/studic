@@ -133,11 +133,6 @@ export default function AddCourseForm({
       form.setError("price", { message: "Add a price, or switch the course to free" });
       return;
     }
-    if (data.status === "published" && !toIdList(data.content).length) {
-      toast.error("Add at least one article before publishing this course.");
-      return;
-    }
-
     try {
       const publishedAt = data.status === "published" ? (data.publishedAt ?? new Date()) : data.publishedAt;
       const payload = courseFilter({
