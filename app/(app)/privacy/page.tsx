@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage, { type LegalSection } from "@/components/informative/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Studic",
+  title: "Privacy Policy",
   description: "Read how Studic collects, uses and protects account, payment and usage information.",
   alternates: { canonical: "/privacy" },
 };

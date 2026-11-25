@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Activity, BookOpen, Boxes, FileText, GitPullRequest, GraduationCap, LayoutDashboard,
@@ -43,7 +44,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r bg-card lg:flex lg:flex-col">
         <Link href="/admin" className="flex h-20 items-center gap-3 border-b px-7">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20">S</span>
+          <Image src="/studic-neon-orbit-logo.png" alt="" aria-hidden="true" width={40} height={40} className="h-10 w-10 rounded-full object-cover" />
           <span><span className="block text-base font-semibold tracking-tight">Studic</span><span className="mt-0.5 block text-xs text-muted-foreground">Admin control center</span></span>
         </Link>
         <nav className="flex-1 space-y-8 overflow-y-auto px-4 py-7">

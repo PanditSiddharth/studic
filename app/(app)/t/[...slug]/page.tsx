@@ -17,7 +17,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description,
     alternates: { canonical: path },
-    openGraph: { type: "article", title, description, url: absoluteUrl(path), publishedTime: result.publishedAt ? new Date(result.publishedAt).toISOString() : undefined, images: result.thumbnail ? [{ url: result.thumbnail }] : undefined },
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url: absoluteUrl(path),
+      publishedTime: result.publishedAt ? new Date(result.publishedAt).toISOString() : undefined,
+      images: result.thumbnail
+        ? [{ url: result.thumbnail }]
+        : [{ url: absoluteUrl("/studic-og.png"), width: 1200, height: 630, alt: "Studic - Learn, Build and Grow" }],
+    },
   };
 }
 

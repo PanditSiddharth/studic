@@ -13,7 +13,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description: cleanMetaText(result.description, `Learn ${title} with a practical course on Studic.`),
     alternates: { canonical: `/course/${slug}` },
-    openGraph: { type: "website", title, description: cleanMetaText(result.description, title), url: absoluteUrl(`/course/${slug}`), images: result.thumbnail ? [{ url: result.thumbnail }] : undefined },
+    openGraph: {
+      type: "website",
+      title,
+      description: cleanMetaText(result.description, title),
+      url: absoluteUrl(`/course/${slug}`),
+      images: result.thumbnail
+        ? [{ url: result.thumbnail }]
+        : [{ url: absoluteUrl("/studic-og.png"), width: 1200, height: 630, alt: "Studic - Learn, Build and Grow" }],
+    },
   };
 }
 

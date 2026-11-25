@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import LegalPage, { type LegalSection } from "@/components/informative/legal-page";
 
-export const metadata: Metadata = { title: "Terms & Conditions | Studic", description: "Read the terms that apply when you access Studic courses, articles, chats and digital products.", alternates: { canonical: "/tnc" } };
+export const metadata: Metadata = { title: "Terms & Conditions", description: "Read the terms that apply when you access Studic courses, articles, chats and digital products.", alternates: { canonical: "/tnc" } };
 const sections: LegalSection[] = [
   { id: "use", title: "Using Studic", body: "You must provide accurate account information, keep your credentials secure and use the platform lawfully. You are responsible for activity performed through your account." },
   { id: "content", title: "Courses and educational content", body: "Studic content is provided for learning and informational purposes. Course availability, format and content may change as resources are improved. Educational content is not a guarantee of academic, professional or examination results." },

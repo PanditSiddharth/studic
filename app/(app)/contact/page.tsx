@@ -3,7 +3,7 @@ import { ArrowRight, ArrowUpRight, Mail, MessageCircle, Send, Youtube } from "lu
 import ContactForm from "@/components/contact/contact-form";
 
 export const metadata: Metadata = {
-  title: "Contact Studic",
+  title: "Contact",
   description: "Get help from the Studic team through chat, email, YouTube or Telegram.",
   alternates: { canonical: "/contact" },
 };

@@ -3,8 +3,9 @@ import { Suspense } from "react";
 import CoursesBrowser from "@/components/course/courses-browser";
 
 export const metadata: Metadata = {
-  title: "Courses · Studic",
+  title: "Courses",
   description: "Browse structured courses. Learn step by step and keep your progress in one library.",
+  alternates: { canonical: "/courses" },
 };
 
 export default function CoursesPage() {

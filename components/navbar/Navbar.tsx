@@ -4,10 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import Image from "next/image";
 import {
   BookOpen, FileText, LayoutDashboard, Library, LogOut, Menu, MessageCircle, Package,
 } from "lucide-react";
 import { NavbarDropdown } from "./navbar-dropdown";
+import StudicLogo from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,11 +41,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/65">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-6">
-          <Link href="/" className="group flex shrink-0 items-center gap-2.5" aria-label="Studic home">
-            <span className="font-tdb text-xl leading-none text-transparent bg-gradient-to-r from-primary to-purple-400 bg-clip-text">
-              Studic
-            </span>
-          </Link>
+          <StudicLogo className="shrink-0" textClassName="text-xl" />
 
           {!isAuthPage && (
             <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
@@ -117,9 +115,7 @@ export default function Navbar() {
 
                 <SheetHeader className="border-b px-5 py-4 text-left">
                   <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5">
-                    <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-purple-500 text-sm font-bold text-primary-foreground">
-                      S
-                    </span>
+                    <Image src="/studic-neon-orbit-logo.png" alt="" aria-hidden="true" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
                     <span className="font-tdb text-lg leading-none">Studic</span>
                   </Link>
                 </SheetHeader>

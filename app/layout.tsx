@@ -28,25 +28,33 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(DOMAIN),
   title: {
-    default: "Studic | Learn, Build and Grow",
+    default: "Studic | Online Courses & Study Resources",
     template: "%s | Studic",
   },
-  description: "Learn through practical courses, articles and downloadable resources on Studic.",
+  description: "Learn and grow with Studic through practical online courses, study guides, useful articles, and downloadable resources for students and curious builders.",
   applicationName: "Studic",
-  keywords: ["online courses", "programming tutorials", "study resources", "digital products", "Studic"],
+  keywords: ["Studic", "online courses", "study resources", "IGNOU study resources", "programming tutorials", "digital learning resources"],
   authors: [{ name: "Studic" }],
   creator: "Studic",
   publisher: "Studic",
   alternates: { canonical: "/" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/studic-neon-orbit-logo.png", type: "image/png", sizes: "768x768" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
+  },
   openGraph: {
     type: "website",
     siteName: "Studic",
-    title: "Studic | Learn, Build and Grow",
-    description: "Practical courses, useful articles and downloadable resources for learners and builders.",
+    title: "Studic | Online Courses & Study Resources",
+    description: "Practical online courses, study guides, articles, and downloadable learning resources for students and curious builders.",
     url: DOMAIN,
     images: [
       {
-        url: absoluteUrl("/code%20pic_files/logo-blue.png"),
+        url: absoluteUrl("/studic-og.png"),
         width: 1200,
         height: 630,
         alt: "Studic - Learn, Build and Grow",
@@ -55,9 +63,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Studic | Learn, Build and Grow",
-    description: "Practical courses, useful articles and downloadable resources.",
-    images: [absoluteUrl("/code%20pic_files/logo-blue.png")],
+    title: "Studic | Online Courses & Study Resources",
+    description: "Practical courses, study guides, articles, and downloadable learning resources.",
+    images: [absoluteUrl("/studic-og.png")],
   },
   robots: { index: true, follow: true },
 };
@@ -83,7 +91,7 @@ export default function RootLayout({
               "@type": "Organization",
               name: "Studic",
               url: DOMAIN,
-              logo: absoluteUrl("/code%20pic_files/logo-blue.png"),
+              logo: absoluteUrl("/studic-neon-orbit-logo.png"),
               sameAs: [
                 "https://youtube.com/ignoustudycenter",
                 "https://telegram.me/ignoustudychannel",

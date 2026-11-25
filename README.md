@@ -201,9 +201,12 @@ RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 NEXT_PUBLIC_RAZORPAY_KEY_ID=your_razorpay_key_id
 SUPER_ADMIN_EMAILS=admin@example.com
 
-# Brevo SMTP credentials used by the admin mailer
-USER_MAIL=your_smtp_login
-MAIL_PASSWORD=your_smtp_password
+# Brevo SMTP credentials used for login and verification codes
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=587
+BREVO_SMTP_USER=your_brevo_smtp_login
+BREVO_SMTP_PASS=your_brevo_smtp_key
+NO_REPLY_EMAIL=your_verified_sender_email
 ```
 
 Do not commit `.env`, `.env.local`, or any secret values. For local development, `DOMAIN` and
@@ -211,6 +214,12 @@ Do not commit `.env`, `.env.local`, or any secret values. For local development,
 the browser, so never put private credentials in them. Set the Razorpay key ID in
 `NEXT_PUBLIC_RAZORPAY_KEY_ID`; keep `RAZORPAY_KEY_SECRET` server-only. Configure both keys in
 your Razorpay test account to test product or course checkout.
+
+For Vercel deployments, add the Brevo variables to the project's Environment Variables for each
+target environment (Production, Preview, and/or Development), then redeploy. Use Brevo SMTP
+credentials (the SMTP key, not the API key or account password), and set `NO_REPLY_EMAIL` to a
+sender address verified in Brevo. `USER_MAIL` and `MAIL_PASSWORD` remain supported as legacy
+fallbacks for the SMTP login and password.
 
 4. **Run the development server**
 ```bash

@@ -3,11 +3,17 @@ import type { Metadata } from "next";
 import { ArrowRight, BookOpen, CheckCircle2, GraduationCap, Sparkles } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "About Studic | Practical Online Learning",
+  title: "About | Practical Online Learning",
   description: "Discover Studic, an affordable online learning platform for practical courses, articles and digital educational resources.",
   keywords: ["Studic", "online learning", "IGNOU study material", "coding courses", "digital educational products"],
   alternates: { canonical: "/about" },
-  openGraph: { title: "About Studic", description: "Practical, affordable learning for students and curious builders.", url: "/about", type: "website" },
+  openGraph: {
+    title: "About Studic",
+    description: "Practical, affordable learning for students and curious builders.",
+    url: "/about",
+    type: "website",
+    images: [{ url: "/studic-og.png", width: 1200, height: 630, alt: "Studic - Learn, Build and Grow" }],
+  },
 };
 
 const pillars = [

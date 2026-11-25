@@ -3,8 +3,10 @@ import { Suspense } from "react";
 import ChatWorkspace from "@/components/chat/chat-workspace";
 
 export const metadata: Metadata = {
-  title: "Chats · Studic",
+  title: "Chats",
   description: "Message learners, mentors and groups on Studic.",
+  alternates: { canonical: "/chat" },
+  robots: { index: false, follow: false },
 };
 
 export default function ChatPage() {
