@@ -22,7 +22,13 @@ export default function CourseTile({ course, className }: { course: Partial<ICou
   const duration = minutes >= 60 ? `${Math.round(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ""}` : minutes ? `${minutes}m` : null;
 
   return (
-    <Card className={cn("group flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5", className)}>
+    <Card
+      data-study-buddy-item={course.slug ? "course" : undefined}
+      data-study-buddy-kind="course"
+      data-study-buddy-title={course.title}
+      data-study-buddy-href={course.slug ? `/course/${course.slug}` : undefined}
+      className={cn("group flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5", className)}
+    >
       <Link href={`/course/${course.slug}`} className="relative block aspect-video overflow-hidden bg-muted">
         {course.thumbnail ? (
           <Image

@@ -31,6 +31,7 @@ export const getCourseDefault = (initial: Partial<ICourse> = {}) => {
     accessType: initial?.accessType || ((initial?.price ?? 0) > 0 ? "paid" : "free"),
     price: initial?.price ?? 0,
     currency: initial?.currency || "INR",
+    highlights: initial?.highlights || "",
     level: initial?.level || "all-levels",
     language: initial?.language || "",
     estimatedMinutes: initial?.estimatedMinutes ?? 0,

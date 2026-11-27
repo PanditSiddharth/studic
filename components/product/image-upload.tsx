@@ -122,7 +122,7 @@ function ImageCropper({ preview, aspectRatio, onCancel, onUploaded }: CropperPro
         image.naturalHeight * outputScale,
       )
       const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not prepare the cropped image')), 'image/jpeg', 0.9)
+        canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not prepare the cropped image')), 'image/jpeg', 0.82)
       )
       onUploaded(await uploadToCloudinary(blob, `studic-${Date.now()}.jpg`))
     } catch (uploadError) {
@@ -244,7 +244,7 @@ export function CloudinaryImageUpload({ onChange, img_src, className, aspectRati
           <span className="flex w-full flex-col items-center justify-center gap-2 p-4 text-center" style={{ aspectRatio }}>
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary"><ImagePlus size={20} /></span>
             <span className="text-sm font-medium">{img_src ? 'Change image' : 'Upload a cover image'}</span>
-            <span className="text-xs text-muted-foreground">JPG, PNG or WebP · crop before upload</span>
+            <span className="text-xs text-muted-foreground">JPG, PNG or WebP · resized and saved as JPG</span>
           </span>
         )}
       </button>

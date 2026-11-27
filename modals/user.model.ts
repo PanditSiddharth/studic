@@ -2,6 +2,7 @@ import mongoose, { Schema, type Model } from "mongoose";
 
 export type UserRole = "student" | "admin";
 export type UserStatus = "active" | "suspended" | "deleted";
+export type ProfileAccent = "violet" | "blue" | "emerald" | "rose" | "amber";
 
 export function getId() {
   const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -23,6 +24,8 @@ export interface IUser {
   about?: string;
   phone?: string | number;
   image?: string;
+  coverImage?: string;
+  profileAccent?: ProfileAccent;
   role?: UserRole;
   status?: UserStatus;
   emailVerified?: Date | null;
@@ -50,6 +53,8 @@ export const UserSchema = new Schema<IUser>(
     about: { type: String, trim: true, maxlength: 500 },
     phone: { type: String, trim: true, maxlength: 20 },
     image: { type: String, default: "" },
+    coverImage: { type: String, trim: true, default: "" },
+    profileAccent: { type: String, enum: ["violet", "blue", "emerald", "rose", "amber"], default: "violet" },
     role: { type: String, enum: ["student", "admin"], default: "student", index: true },
     status: { type: String, enum: ["active", "suspended", "deleted"], default: "active", index: true },
     emailVerified: { type: Date, default: null },

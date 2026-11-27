@@ -174,7 +174,14 @@ export default function BlogsBrowser() {
               const href = blog.category?.length ? `/t/${blog.category[0]}/${blog.slug}` : `/t/${blog.slug}`;
               const isPaid = blog.accessType === "paid" || blog.status === "paid" || Number(blog.price) > 0;
               return (
-                <article key={String(blog._id || blog.slug)} className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+                <article
+                  key={String(blog._id || blog.slug)}
+                  data-study-buddy-item="article"
+                  data-study-buddy-kind="article"
+                  data-study-buddy-title={blog.title}
+                  data-study-buddy-href={href}
+                  className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+                >
                   <Link href={href} className="relative block aspect-[16/9] overflow-hidden bg-muted">
                     {blog.thumbnail ? (
                       <Image src={blog.thumbnail} alt={blog.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />

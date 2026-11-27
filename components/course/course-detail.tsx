@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import MarkdownPreview from "@uiw/react-markdown-preview";
+import { useTheme } from "next-themes";
 import {
   ArrowLeft, BadgeCheck, BookOpen, ChevronRight, Clock3, Download, ExternalLink, Globe2,
   Layers, Loader2, Lock, Package, PlayCircle, ShieldCheck, Sparkles,
@@ -54,6 +56,7 @@ function getDescriptionParagraphs(description: string) {
 }
 
 export default function CourseDetail({ slug }: { slug: string }) {
+  const { theme, systemTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [course, setCourse] = useState<Partial<ICourse> | null>(null);
@@ -165,6 +168,9 @@ export default function CourseDetail({ slug }: { slug: string }) {
   const owned = Boolean(access?.owned);
   const pending = access?.orderStatus === "pending";
   const needsPurchase = !isFree && !owned;
+  const highlights = String(course.highlights || "").trim();
+  const currentTheme = theme === "system" ? systemTheme : theme;
+  const colorMode = ["dark", "blue", "purple", "aqua"].includes(currentTheme || "") ? "dark" : "light";
   const courseDescription = String(course.description || "").trim();
   const descriptionPreview = courseDescription.replace(/\s+/g, " ");
   const descriptionParagraphs = getDescriptionParagraphs(courseDescription);
@@ -320,6 +326,29 @@ export default function CourseDetail({ slug }: { slug: string }) {
         </aside>
 
         <section id="course-content" className="min-w-0">
+          {highlights && (
+            <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                <Sparkles size={16} className="text-primary" />
+                <span>Course highlights</span>
+              </div>
+              <MarkdownPreview
+                source={highlights}
+                data-color-mode={colorMode}
+                className={cn(
+                  "course-highlights max-w-none bg-transparent text-sm leading-6",
+                  "[&_h1]:!mb-3 [&_h1]:!mt-0 [&_h1]:!text-xl [&_h1]:!font-semibold [&_h1]:!leading-tight",
+                  "[&_h2]:!mb-2 [&_h2]:!mt-5 [&_h2]:!border-0 [&_h2]:!pb-0 [&_h2]:!text-lg [&_h2]:!font-semibold",
+                  "[&_h3]:!mb-2 [&_h3]:!mt-4 [&_h3]:!text-base [&_h3]:!font-semibold",
+                  "[&_h1]:!text-foreground [&_h1_a]:!text-foreground [&_h2]:!text-foreground [&_h2_a]:!text-foreground [&_h3]:!text-foreground [&_h3_a]:!text-foreground",
+                  "[&_p]:!mb-3 [&_p]:!leading-6 [&_ul]:!my-2 [&_ol]:!my-2",
+                  "[&_a.anchor]:!hidden"
+                )}
+                style={{ backgroundColor: "transparent", color: "hsl(var(--foreground))" }}
+              />
+            </div>
+          )}
+
           {showLessonsArea && (
             <>
               <div className="flex flex-wrap items-end justify-between gap-2">
@@ -438,38 +467,39 @@ export default function CourseDetail({ slug }: { slug: string }) {
                   const productIsFree = !Number(product.price);
                   const canDownload = Boolean(owned) && Boolean(product._id);
                   return (
-                    <div key={String(product._id || product.slug)} className="flex items-center gap-3 rounded-xl border bg-card p-3">
-                      <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                    <div key={String(product._id || product.slug)} className="flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card">
+                      <div className="relative aspect-video w-full overflow-hidden bg-muted">
                         {product.thumbnail ? (
-                          <Image src={product.thumbnail} alt={product.title || ""} fill sizes="80px" className="object-cover" />
+                          <Image src={product.thumbnail} alt={product.title || ""} fill sizes="(max-width: 640px) 100vw, 40vw" className="object-cover" />
                         ) : (
                           <div className="flex h-full items-center justify-center text-muted-foreground"><Package size={18} /></div>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <Link href={`/product/${product.slug}`} className="line-clamp-2 text-sm font-medium hover:text-primary">
+                      <div className="flex flex-1 flex-col p-3">
+                        <Link href={`/product/${product.slug}`} className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 hover:text-primary">
                           {product.title}
                         </Link>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                          {productIsFree ? (
-                            <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">Free</span>
-                          ) : owned ? (
-                            <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">Included</span>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                            {productIsFree ? (
+                              <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">Free</span>
+                            ) : owned ? (
+                              <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">Included</span>
+                            ) : (
+                              <span>{formatPrice(product.price, product.currency)}</span>
+                            )}
+                          </p>
+                          {canDownload ? (
+                            <Button asChild size="sm" className="shrink-0 gap-1.5">
+                              <a href={`/api/download/${product._id}`}><Download size={13} /> Download</a>
+                            </Button>
                           ) : (
-                            <span>{formatPrice(product.price, product.currency)}</span>
+                            <Button asChild size="sm" variant="outline" className="shrink-0">
+                              <Link href={`/product/${product.slug}`}>{productIsFree ? "Get free" : "Buy"}</Link>
+                            </Button>
                           )}
-                          {product.fileName ? <span className="truncate">{product.fileName}</span> : null}
-                        </p>
+                        </div>
                       </div>
-                      {canDownload ? (
-                        <Button asChild size="sm" className="shrink-0 gap-1.5">
-                          <a href={`/api/download/${product._id}`}><Download size={13} /> Download</a>
-                        </Button>
-                      ) : (
-                        <Button asChild size="sm" variant="outline" className="shrink-0">
-                          <Link href={`/product/${product.slug}`}>{productIsFree ? "Get free" : "Buy"}</Link>
-                        </Button>
-                      )}
                     </div>
                   );
                 })}

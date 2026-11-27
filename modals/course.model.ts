@@ -10,6 +10,7 @@ export interface ICourse {
   status: CourseStatus;
   price: number;
   description: string;
+  highlights?: string;
   thumbnail: string;
   thumbnailPublicId?: string;
   content: string[] | mongoose.Types.ObjectId[] | unknown[];
@@ -40,6 +41,7 @@ const CourseSchema = new Schema<ICourse>(
     price: { type: Number, required: true, min: 0, default: 0 },
     currency: { type: String, uppercase: true, default: "INR", maxlength: 3 },
     description: { type: String, required: true, maxlength: 10000 },
+    highlights: { type: String, trim: true, maxlength: 10000 },
     thumbnail: { type: String, required: true, default: "" },
     thumbnailPublicId: { type: String, trim: true },
     content: [{ type: Schema.Types.ObjectId, ref: "Blog" }],

@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-toastify";
 import {
-  BadgeCheck, BookOpen, CalendarDays, Check, Clock, Download, FileText, GraduationCap,
-  Loader2, Mail, Package, Pencil, ReceiptText, ShoppingBag, Sparkles, UserRound, X,
+  ArrowUpRight, BadgeCheck, BookOpen, CalendarDays, Check, Clock, Download, FileText, GraduationCap,
+  Loader2, Mail, Package, Palette, ReceiptText, ShoppingBag, Sparkles, UserRound, X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { getMyLibrary, updateMyProfile } from "@/server-functions/library";
 import { formatPrice } from "@/components/product/product-card";
 import { cn } from "@/modals/utils";
 import { CloudinaryImageUpload } from "@/components/product/image-upload";
+import type { ProfileAccent } from "@/modals/user.model";
 
 type LibraryUser = {
   _id?: string;
@@ -26,6 +28,8 @@ type LibraryUser = {
   email: string;
   username?: string;
   image?: string;
+  coverImage?: string;
+  profileAccent?: ProfileAccent;
   role?: string;
   about?: string;
   phone?: string;
@@ -95,6 +99,43 @@ const statusStyles: Record<string, string> = {
 const initials = (name?: string) =>
   String(name || "S").split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
 
+const profileAccentOptions: Record<ProfileAccent, { label: string; gradient: string; swatch: string }> = {
+  violet: { label: "Violet", gradient: "from-violet-600 via-indigo-600 to-sky-500", swatch: "bg-violet-500" },
+  blue: { label: "Ocean blue", gradient: "from-sky-600 via-blue-600 to-indigo-500", swatch: "bg-sky-500" },
+  emerald: { label: "Emerald", gradient: "from-teal-600 via-emerald-500 to-lime-500", swatch: "bg-emerald-500" },
+  rose: { label: "Rose", gradient: "from-rose-600 via-pink-600 to-orange-500", swatch: "bg-rose-500" },
+  amber: { label: "Amber", gradient: "from-amber-500 via-orange-600 to-rose-500", swatch: "bg-amber-500" },
+};
+
+const profileAccentChoices: ProfileAccent[] = ["violet", "blue", "emerald", "rose", "amber"];
+
+const discoveryLinks = [
+  {
+    title: "Explore courses",
+    description: "Follow a learning path and track your progress.",
+    href: "/courses",
+    action: "Browse courses",
+    icon: GraduationCap,
+    tone: "bg-violet-500/10 text-violet-500",
+  },
+  {
+    title: "Find study resources",
+    description: "Get notes, downloads and helpful study material.",
+    href: "/products",
+    action: "Browse resources",
+    icon: Package,
+    tone: "bg-sky-500/10 text-sky-500",
+  },
+  {
+    title: "Read articles",
+    description: "Discover guides, explainers and new ideas.",
+    href: "/blogs",
+    action: "Explore articles",
+    icon: FileText,
+    tone: "bg-emerald-500/10 text-emerald-500",
+  },
+];
+
 function EmptyState({ icon: Icon, title, text, action }: { icon: typeof BookOpen; title: string; text: string; action?: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed bg-muted/20 px-6 py-12 text-center">
@@ -115,7 +156,15 @@ export default function ProfileView() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [form, setForm] = useState({ name: "", username: "", about: "", phone: "", image: "" });
+  const [form, setForm] = useState({
+    name: "",
+    username: "",
+    about: "",
+    phone: "",
+    image: "",
+    coverImage: "",
+    profileAccent: "violet" as ProfileAccent,
+  });
 
   const load = useCallback(async () => {
     const result = await getMyLibrary();
@@ -135,6 +184,8 @@ export default function ProfileView() {
       about: result.user.about || "",
       phone: String(result.user.phone || ""),
       image: result.user.image || "",
+      coverImage: result.user.coverImage || "",
+      profileAccent: result.user.profileAccent || "violet",
     });
     setError(null);
   }, [router]);
@@ -147,7 +198,8 @@ export default function ProfileView() {
     if (status !== "authenticated") return;
 
     let cancelled = false;
-    setLoading(true);
+    // The fetch updates state only after its asynchronous response arrives.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- this effect starts the async library request
     load()
       .catch(() => { if (!cancelled) setError("Your library could not be loaded."); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -163,9 +215,28 @@ export default function ProfileView() {
         toast.error(result.error);
         return;
       }
+      setLibrary((current) => {
+        if (!current) return current;
+        const savedUser = result.user;
+        return {
+          ...current,
+          user: {
+            ...current.user,
+            name: savedUser.name ?? current.user.name,
+            email: savedUser.email ?? current.user.email,
+            username: savedUser.username ?? current.user.username,
+            image: savedUser.image ?? current.user.image,
+            coverImage: savedUser.coverImage ?? current.user.coverImage,
+            profileAccent: savedUser.profileAccent ?? current.user.profileAccent,
+            role: savedUser.role ?? current.user.role,
+            about: savedUser.about ?? current.user.about,
+            phone: savedUser.phone == null ? current.user.phone : String(savedUser.phone),
+            createdOn: savedUser.createdOn == null ? current.user.createdOn : String(savedUser.createdOn),
+          },
+        };
+      });
       toast.success("Profile updated");
       setEditing(false);
-      await load();
     } finally {
       setSaving(false);
     }
@@ -195,23 +266,40 @@ export default function ProfileView() {
 
   const { user, stats } = library;
   const joined = user.createdOn ? new Date(user.createdOn).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : null;
+  const activeAccent = editing ? form.profileAccent : user.profileAccent || "violet";
+  const activeCover = editing ? form.coverImage : user.coverImage;
+  const coverOverlay = activeCover
+    ? "from-black/55 via-black/15 to-black/35"
+    : profileAccentOptions[activeAccent].gradient;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Your Studic space</p>
+        <p className="mt-1 text-sm text-muted-foreground">Profile, learning progress and everything you own.</p>
+      </div>
+
       <Card className="overflow-hidden border">
-        <div className="relative h-28 bg-gradient-to-r from-primary/25 via-violet-500/20 to-sky-500/20 sm:h-32">
-          <div className="absolute -left-10 -top-14 h-40 w-40 rounded-full bg-primary/30 blur-3xl" />
-          <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-sky-500/20 blur-3xl" />
+        <div className="relative h-36 overflow-hidden bg-muted sm:h-44">
+          {activeCover ? (
+            <Image src={activeCover} alt="" fill sizes="(max-width: 1024px) 100vw, 1152px" className="object-cover" priority />
+          ) : null}
+          <div className={cn("absolute inset-0 bg-gradient-to-r", coverOverlay)} />
+          <div className="absolute -left-10 -top-14 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+          <span className="absolute right-3 top-3 rounded-full border border-white/25 bg-black/20 px-3 py-1 text-[11px] font-medium text-white backdrop-blur sm:bottom-3 sm:right-4 sm:top-auto">
+            {profileAccentOptions[activeAccent].label} profile
+          </span>
         </div>
-        <div className="relative px-5 pb-5 sm:px-7">
-          <div className="-mt-10 flex flex-wrap items-end justify-between gap-4">
-            <div className="flex items-end gap-4">
-              <Avatar className="h-20 w-20 border-4 border-background shadow-sm">
+        <div className="relative px-5 pb-6 sm:px-7">
+          <div className="-mt-12 flex flex-wrap items-end justify-between gap-4">
+            <div className="flex min-w-0 items-end gap-3 sm:gap-4">
+              <Avatar className="h-24 w-24 border-4 border-card shadow-lg">
                 <AvatarImage src={user.image} alt={user.name} />
                 <AvatarFallback className="bg-primary/10 text-xl font-semibold text-primary">{initials(user.name)}</AvatarFallback>
               </Avatar>
-              <div className="pb-1">
-                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{user.name}</h1>
+              <div className="min-w-0 pb-1">
+                <h1 className="break-words text-xl font-semibold tracking-tight sm:text-2xl">{user.name}</h1>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                   {user.username && <span>@{user.username}</span>}
                   <span className="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 capitalize">
@@ -221,8 +309,8 @@ export default function ProfileView() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing((current) => !current)}>
-              {editing ? <X size={14} /> : <Pencil size={14} />} {editing ? "Close editor" : "Edit profile"}
+            <Button variant={editing ? "outline" : "default"} size="sm" className="gap-1.5" onClick={() => setEditing((current) => !current)}>
+              {editing ? <X size={14} /> : <Palette size={14} />} {editing ? "Close editor" : "Customize profile"}
             </Button>
           </div>
 
@@ -230,6 +318,13 @@ export default function ProfileView() {
 
           {editing && (
             <form onSubmit={saveProfile} className="mt-5 rounded-2xl border bg-muted/20 p-4 sm:p-5">
+              <div className="mb-4 flex items-start gap-3 border-b pb-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Palette size={17} /></span>
+                <div>
+                  <h2 className="text-sm font-semibold">Make this space yours</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Choose a cover, accent color and the details people see in your library.</p>
+                </div>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="profile-name" className="text-xs">Name</Label>
@@ -252,6 +347,48 @@ export default function ProfileView() {
                     className="max-w-[180px] rounded-full"
                   />
                   <p className="text-[11px] text-muted-foreground">Square image · drag to position and zoom before uploading.</p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-xs">Cover image</Label>
+                    {form.coverImage ? (
+                      <button type="button" onClick={() => setForm({ ...form, coverImage: "" })} className="text-xs text-muted-foreground hover:text-foreground">
+                        Remove cover
+                      </button>
+                    ) : null}
+                  </div>
+                  <CloudinaryImageUpload
+                    img_src={form.coverImage}
+                    aspectRatio={5}
+                    onChange={(coverImage) => setForm({ ...form, coverImage })}
+                    className="rounded-xl"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Wide image · converted to compressed JPG. Save changes to publish your cover.</p>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label className="text-xs">Accent color</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {profileAccentChoices.map((accent) => {
+                      const option = profileAccentOptions[accent];
+                      const selected = form.profileAccent === accent;
+                      return (
+                        <button
+                          key={accent}
+                          type="button"
+                          aria-label={`${option.label} accent`}
+                          aria-pressed={selected}
+                          onClick={() => setForm({ ...form, profileAccent: accent })}
+                          className={cn(
+                            "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                            selected ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/40" : "bg-background hover:bg-muted"
+                          )}
+                        >
+                          <span className={cn("h-3 w-3 rounded-full", option.swatch)} />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="profile-about" className="text-xs">About</Label>
@@ -297,11 +434,42 @@ export default function ProfileView() {
         ))}
       </div>
 
+      <section className="mt-7" aria-labelledby="profile-discover-heading">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Explore Studic</p>
+            <h2 id="profile-discover-heading" className="mt-1 text-lg font-semibold tracking-tight">What would you like to learn?</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">Your next resource is one click away.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {discoveryLinks.map((item) => (
+            <Link
+              key={item.title}
+              href={item.href}
+              className="group flex min-h-40 flex-col justify-between rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+            >
+              <span className={cn("flex h-10 w-10 items-center justify-center rounded-xl", item.tone)}>
+                <item.icon size={19} />
+              </span>
+              <span className="mt-4 flex items-end justify-between gap-3">
+                <span>
+                  <span className="block text-sm font-semibold group-hover:text-primary">{item.title}</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">{item.description}</span>
+                  <span className="mt-2 block text-xs font-medium text-primary">{item.action}</span>
+                </span>
+                <ArrowUpRight size={17} className="mb-0.5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <Tabs defaultValue="courses" className="mt-6">
-        <TabsList className="h-10 bg-muted/60 p-1">
-          <TabsTrigger value="courses" className="gap-1.5 text-xs sm:text-sm"><GraduationCap size={14} /> Courses ({stats.courses})</TabsTrigger>
-          <TabsTrigger value="products" className="gap-1.5 text-xs sm:text-sm"><Package size={14} /> Products ({stats.products})</TabsTrigger>
-          <TabsTrigger value="orders" className="gap-1.5 text-xs sm:text-sm"><ReceiptText size={14} /> Orders ({stats.orders})</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/60 p-1">
+          <TabsTrigger value="courses" className="min-w-0 gap-1 px-1 text-[10px] sm:gap-1.5 sm:px-3 sm:text-sm"><GraduationCap size={14} /> Courses ({stats.courses})</TabsTrigger>
+          <TabsTrigger value="products" className="min-w-0 gap-1 px-1 text-[10px] sm:gap-1.5 sm:px-3 sm:text-sm"><Package size={14} /> Products ({stats.products})</TabsTrigger>
+          <TabsTrigger value="orders" className="min-w-0 gap-1 px-1 text-[10px] sm:gap-1.5 sm:px-3 sm:text-sm"><ReceiptText size={14} /> Orders ({stats.orders})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="courses" className="mt-4">
@@ -318,7 +486,7 @@ export default function ProfileView() {
                 <Card key={course._id} className="flex gap-3 overflow-hidden p-3">
                   <Link href={`/course/${course.slug}`} className="relative h-24 w-36 shrink-0 overflow-hidden rounded-lg bg-muted">
                     {course.thumbnail ? (
-                      <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
+                      <Image src={course.thumbnail} alt={course.title} fill sizes="144px" className="object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-muted-foreground"><BookOpen size={20} /></div>
                     )}
@@ -358,7 +526,7 @@ export default function ProfileView() {
                 <Card key={product._id} className="flex flex-col overflow-hidden">
                   <Link href={`/product/${product.slug}`} className="relative block aspect-[16/9] bg-muted">
                     {product.thumbnail ? (
-                      <img src={product.thumbnail} alt={product.title} className="h-full w-full object-cover" />
+                      <Image src={product.thumbnail} alt={product.title} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-muted-foreground"><Package size={22} /></div>
                     )}

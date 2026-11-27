@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import {
   ArrowDown, ArrowLeft, ArrowUp, BookOpen, Clock3, Eye, Globe2, GraduationCap,
-  ExternalLink, ImageIcon, IndianRupee, Languages, ListVideo, Loader2, Package, Plus, Tags,
+  ExternalLink, ImageIcon, IndianRupee, Languages, ListVideo, Loader2, Package, Plus, Sparkles, Tags,
   Trash2, TriangleAlert,
 } from "lucide-react";
 import { ZodCourseSchema } from "@/modals/zod";
@@ -31,6 +31,7 @@ import { addOrUpdateCourse } from "@/server-functions/course";
 import { MyField } from "../myField";
 import { generateSlug, getActionError, getCourseDefault, isValidSlug, toIdList } from "../helpers";
 import BlogPicker from "./blogs-update";
+import MyEditor from "../editor";
 
 type CourseFormValues = z.infer<typeof ZodCourseSchema>;
 
@@ -266,6 +267,29 @@ export default function AddCourseForm({
                     maxLength={10000}
                     className="resize-none"
                     placeholder="What will students walk away with?"
+                  />
+                )}
+              />
+            </FormSection>
+
+            <FormSection
+              title="Course highlights"
+              description="Optional notes, instructions, links or announcements shown above the articles and downloads."
+              icon={Sparkles}
+              contentClassName="px-0 py-0 sm:px-0"
+            >
+              <MyField
+                form={form}
+                name="highlights"
+                label="Highlighted content"
+                description="Write in Markdown. Links are displayed as buttons; leave empty to hide this section."
+                className="space-y-0"
+                input={(field) => (
+                  <MyEditor
+                    onChange={field.onChange}
+                    value={field.value}
+                    height={320}
+                    placeholder="Add important instructions, links to related courses, or a call-to-action…"
                   />
                 )}
               />

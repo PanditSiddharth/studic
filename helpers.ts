@@ -6,8 +6,8 @@ import { IUser } from "./modals/user.model";
 const plainId = (value: any) => value == null ? undefined : String(value);
 
 export const userFilter = (user: any = {}): Partial<IUser> => {
-    const { _id, name, email, image, role, status, about, phone, username, createdOn, updatedAt }: Partial<IUser> = user;
-    return JSON.parse(JSON.stringify({ _id: plainId(_id), name, email, image, role, status, about, phone, username, createdOn, updatedAt }));
+    const { _id, name, email, image, coverImage, profileAccent, role, status, about, phone, username, createdOn, updatedAt }: Partial<IUser> = user;
+    return JSON.parse(JSON.stringify({ _id: plainId(_id), name, email, image, coverImage, profileAccent, role, status, about, phone, username, createdOn, updatedAt }));
 };
 
 /**
@@ -67,12 +67,12 @@ export const isHiddenBlogStatus = (status?: string) =>
 
 export const courseFilter = (course: any = {}): Partial<ICourse> => {
     const {
-        _id, slug, tags, title, status, price, description, thumbnail, content,
+        _id, slug, tags, title, status, price, description, highlights, thumbnail, content,
         author, publishedAt, createdOn, updatedAt, accessType, currency, level,
         language, estimatedMinutes, prerequisites, landingPage, products, externalLink, externalLinkLabel
     }: Partial<ICourse> = course;
     return JSON.parse(JSON.stringify({
-        _id: plainId(_id), slug, title, status, tags, price, description, thumbnail,
+        _id: plainId(_id), slug, title, status, tags, price, description, highlights, thumbnail,
         content, author: plainId(author), publishedAt, createdOn, updatedAt,
         accessType, currency, level, language, estimatedMinutes, prerequisites, landingPage, products,
         externalLink, externalLinkLabel

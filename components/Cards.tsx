@@ -30,7 +30,13 @@ export const BlogCard: React.FC<IBlogCard> = ({
     imageClass,
 }) => {
     return (
-        <Card className={cn('overflow-hidden', className)}>
+        <Card
+            data-study-buddy-item="article"
+            data-study-buddy-kind="article"
+            data-study-buddy-title={title}
+            data-study-buddy-href={slug}
+            className={cn('overflow-hidden', className)}
+        >
             <div className="relative w-full h-0 pb-[56.25%]">
                 <Image
                     src={image}
@@ -75,7 +81,13 @@ export const CourseCard: React.FC<IBlogCard> = ({
     description,
 }) => {
     return (
-        <Card className="overflow-hidden  rounded-lg">
+        <Card
+            data-study-buddy-item={slug ? "course" : undefined}
+            data-study-buddy-kind="course"
+            data-study-buddy-title={title}
+            data-study-buddy-href={slug}
+            className="overflow-hidden  rounded-lg"
+        >
             <div className="relative w-full h-0 pb-[56.25%]">
                 <Image src={image} alt={title} fill className="object-cover" />
             </div>

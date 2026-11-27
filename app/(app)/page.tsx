@@ -136,7 +136,12 @@ export default function HomePage() {
         <Section eyebrow="Start learning" title="Featured courses" description="Build useful skills with focused, practical learning paths." actionHref="/courses" actionText="View all courses">
           <motion.div initial="hidden" whileInView="show" viewport={{ once: true, margin: "-60px" }} variants={stagger} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {coursesStore.data.map((course) => (
-              <motion.div key={course.slug} variants={reveal} whileHover={reduceMotion ? undefined : { y: -7 }} transition={{ type: "spring", stiffness: 280, damping: 20 }}>
+              <motion.div
+                key={course.slug}
+                variants={reveal}
+                whileHover={reduceMotion ? undefined : { y: -7 }}
+                transition={{ type: "spring", stiffness: 280, damping: 20 }}
+              >
                 <CourseCard title={course.title} description={course.description} slug={`/course/${course.slug}`} image={course.thumbnail} price={course.price} className="h-full group hover:border-primary/20 transition-all duration-300" />
               </motion.div>
             ))}

@@ -28,7 +28,13 @@ const ProductCard = ({ product, className }: ProductOptions) => {
   const isFree = !Number(product.price);
 
   return (
-    <Card className={cn("group flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5", className)}>
+    <Card
+      data-study-buddy-item={product.slug ? "product" : undefined}
+      data-study-buddy-kind="product"
+      data-study-buddy-title={product.title}
+      data-study-buddy-href={product.slug ? `/product/${product.slug}` : undefined}
+      className={cn("group flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5", className)}
+    >
       <Link href={`/product/${product.slug}`} className="relative block aspect-[16/10] overflow-hidden bg-muted">
         {product.thumbnail ? (
           <Image

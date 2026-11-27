@@ -6,6 +6,7 @@ import SessionProvider from "@/components/SessionProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Navbar from "@/components/navbar/Navbar";
 import { ToastProvider } from "@/components/ToastProvider";
+import StudyBuddy from "@/components/study-buddy";
 import localFont from "next/font/local";
 import { absoluteUrl, DOMAIN } from "@/lib/seo";
 const tdb = localFont({
@@ -117,9 +118,10 @@ export default function RootLayout({
           <ThemeProvider {...themeOptions} attribute={"class"}>
             <Navbar />
             <div className="w-72 h-72 rounded-full bg-purple-600/7 blur-[128px] absolute  left-5 top-0 z-[-1]" />
-            <div className="w-72 h-72 rounded-full bg-purple-600/10 blur-[128px] absolute  left-20 top-[50%] z-[-1]" />
+            <div className="w-72 h-72 rounded-full bg-purple-600/10 blur-[128px] absolute left-0 sm:left-20 top-[50%] z-[-1]" />
             <div className="w-72 h-72 rounded-full bg-purple-600/7 blur-[128px] absolute  right-0 top-[70%] z-[-1]" />
             {children}
+            <StudyBuddy />
             <ToastProvider />
 
           </ThemeProvider>

@@ -7,7 +7,7 @@ import { BlogModel } from "@/modals/blog.model";
 import { EnrollmentModel } from "@/modals/enrollment.model";
 import { OrderModel } from "@/modals/order.model";
 import { ProductModel } from "@/modals/product.model";
-import { UserModel } from "@/modals/user.model";
+import { UserModel, type ProfileAccent } from "@/modals/user.model";
 import { isSuperAdminEmail, userFilter } from "@/helpers";
 import { getSessionUser } from "./user";
 
@@ -306,7 +306,7 @@ export async function getMyLibrary() {
 
   try {
     const [user, enrollments, orders] = await Promise.all([
-      UserModel.findById(session._id).select("name email username image about phone role createdOn"),
+      UserModel.findById(session._id).select("name email username image coverImage profileAccent about phone role createdOn"),
       EnrollmentModel.find({ user: session._id, status: { $ne: "revoked" } })
         .populate("course", "title slug thumbnail description tags level language estimatedMinutes accessType price currency status")
         .sort({ enrolledAt: -1 })
@@ -436,6 +436,8 @@ export async function updateMyProfile(input: {
   about?: string;
   phone?: string;
   image?: string;
+  coverImage?: string;
+  profileAccent?: ProfileAccent;
 }) {
   const session = await getSessionUser();
   if (!session?._id) return { error: "Sign in to update your profile" };
@@ -445,6 +447,8 @@ export async function updateMyProfile(input: {
   const about = String(input?.about || "").trim();
   const phone = String(input?.phone || "").trim();
   const image = String(input?.image || "").trim();
+  const coverImage = String(input?.coverImage || "").trim();
+  const profileAccent = input?.profileAccent || "violet";
 
   if (name.length < 2 || name.length > 60) return { error: "Enter your name (2–60 characters)" };
   if (!/^[a-z0-9_-]{3,30}$/.test(username)) {
@@ -453,6 +457,10 @@ export async function updateMyProfile(input: {
   if (about.length > 500) return { error: "Keep your bio under 500 characters" };
   if (phone.length > 20) return { error: "Enter a valid phone number" };
   if (image && !/^https?:\/\//i.test(image)) return { error: "Profile image must be a valid URL" };
+  if (coverImage && !/^https?:\/\//i.test(coverImage)) return { error: "Cover image must be a valid URL" };
+  if (!["violet", "blue", "emerald", "rose", "amber"].includes(profileAccent)) {
+    return { error: "Choose a valid profile accent color" };
+  }
 
   await connectDB();
 
@@ -462,7 +470,7 @@ export async function updateMyProfile(input: {
 
     const updated = await UserModel.findByIdAndUpdate(
       session._id,
-      { name, username, about, phone, image },
+      { name, username, about, phone, image, coverImage, profileAccent },
       { new: true, runValidators: true }
     );
     if (!updated) return { error: "Your account could not be updated" };

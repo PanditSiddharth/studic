@@ -241,7 +241,7 @@ export async function getCourses(options: GetCoursesOptions): Promise<ResProps |
 
         const [courses, totalCourses] = await Promise.all([
             CourseModel.find(query)
-                .select("-externalLink -externalLinkLabel")
+                .select("-externalLink -externalLinkLabel -highlights")
                 .sort({ publishedAt: -1, createdOn: -1, _id: -1 })
                 .skip(skip)
                 .limit(limit),

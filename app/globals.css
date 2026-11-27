@@ -6,6 +6,148 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@keyframes study-buddy-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes study-buddy-blink {
+  0%, 44%, 48%, 100% { transform: scaleY(1); }
+  46%, 47% { transform: scaleY(0.12); }
+}
+
+.study-buddy-float {
+  animation: study-buddy-float 3.8s ease-in-out infinite;
+}
+
+.study-buddy-sprite {
+  color: hsl(var(--primary));
+}
+
+.study-buddy-cap {
+  fill: hsl(var(--primary));
+  stroke: hsl(var(--primary-foreground));
+}
+
+.study-buddy-cover-left {
+  fill: hsl(var(--primary) / 0.18);
+}
+
+.study-buddy-cover-right {
+  fill: hsl(var(--primary) / 0.32);
+}
+
+.study-buddy-blush {
+  fill: hsl(351 78% 78% / 0.82);
+}
+
+.study-buddy-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: study-buddy-blink 5s linear infinite;
+}
+
+.study-buddy-arm-left,
+.study-buddy-arm-right,
+.study-buddy-leg-left,
+.study-buddy-leg-right {
+  transform-box: fill-box;
+  transform-origin: 0% 0%;
+}
+
+.study-buddy-arm-left {
+  transform-origin: 95% 0%;
+}
+
+.study-buddy-arm-right {
+  transform-origin: 5% 0%;
+}
+
+.study-buddy-leg-left {
+  transform-origin: 100% 0%;
+}
+
+.study-buddy--wave .study-buddy-arm-right {
+  animation: study-buddy-wave 280ms ease-in-out 4 alternate;
+}
+
+.study-buddy--point .study-buddy-arm-right {
+  transform: rotate(-60deg);
+}
+
+.study-buddy--hang .study-buddy-arm-left,
+.study-buddy--hang .study-buddy-arm-right {
+  transform: rotate(62deg);
+}
+
+.study-buddy--walk .study-buddy-arm-left,
+.study-buddy--walk .study-buddy-arm-right {
+  animation: study-buddy-step 260ms ease-in-out 3 alternate;
+}
+
+.study-buddy--walk .study-buddy-arm-right,
+.study-buddy--walk .study-buddy-leg-right {
+  animation-direction: alternate-reverse;
+}
+
+.study-buddy--walk .study-buddy-leg-left,
+.study-buddy--walk .study-buddy-leg-right {
+  animation: study-buddy-step 260ms ease-in-out 3 alternate;
+}
+
+.study-buddy--lift .study-buddy-arm-left {
+  animation: study-buddy-reach 260ms ease-out forwards;
+}
+
+.study-buddy--lift .study-buddy-arm-right {
+  animation: study-buddy-reach-reverse 260ms ease-out forwards;
+}
+
+.study-buddy--wobble .study-buddy-arm-left,
+.study-buddy--wobble .study-buddy-arm-right,
+.study-buddy--wobble .study-buddy-leg-left,
+.study-buddy--wobble .study-buddy-leg-right {
+  animation: study-buddy-wiggle 240ms ease-in-out 3 alternate;
+}
+
+@keyframes study-buddy-wave {
+  to { transform: rotate(-35deg); }
+}
+
+@keyframes study-buddy-step {
+  to { transform: rotate(24deg) translateY(-1px); }
+}
+
+@keyframes study-buddy-reach {
+  to { transform: rotate(70deg) translateY(-1px); }
+}
+
+@keyframes study-buddy-reach-reverse {
+  to { transform: rotate(-70deg) translateY(-1px); }
+}
+
+@keyframes study-buddy-wiggle {
+  to { transform: rotate(-28deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-buddy-float,
+  .study-buddy-blink,
+  .study-buddy--wave .study-buddy-arm-right,
+  .study-buddy--walk .study-buddy-arm-left,
+  .study-buddy--walk .study-buddy-arm-right,
+  .study-buddy--walk .study-buddy-leg-left,
+  .study-buddy--walk .study-buddy-leg-right,
+  .study-buddy--lift .study-buddy-arm-left,
+  .study-buddy--lift .study-buddy-arm-right,
+  .study-buddy--wobble .study-buddy-arm-left,
+  .study-buddy--wobble .study-buddy-arm-right,
+  .study-buddy--wobble .study-buddy-leg-left,
+  .study-buddy--wobble .study-buddy-leg-right {
+    animation: none;
+  }
+}
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -47,25 +189,25 @@ body {
   }
 
   .dark {
-    --background: 0 0% 8%;
-    --foreground: 0 0% 95%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --background: 222 24% 11%;
+    --foreground: 214 24% 94%;
+    --card: 222 20% 15%;
+    --card-foreground: 214 24% 94%;
+    --popover: 222 20% 16%;
+    --popover-foreground: 214 24% 94%;
+    --primary: 212 78% 70%;
+    --primary-foreground: 222 30% 12%;
+    --secondary: 222 17% 22%;
+    --secondary-foreground: 214 24% 94%;
+    --muted: 222 17% 20%;
+    --muted-foreground: 215 14% 70%;
+    --accent: 222 17% 24%;
+    --accent-foreground: 214 24% 94%;
+    --destructive: 0 55% 40%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: 220 16% 27%;
+    --input: 220 16% 27%;
+    --ring: 212 78% 70%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -94,4 +236,9 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.course-highlights :is(p, li) > :is(img, a:not(.anchor), kbd, code:not(pre code), span, button) {
+  display: inline-block !important;
+  margin: 1px !important;
 }

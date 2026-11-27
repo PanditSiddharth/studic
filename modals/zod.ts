@@ -137,6 +137,7 @@ export const ZodCourseSchema = z.object({
   price: z.number().min(0, "Price cannot be negative").default(0),
   currency: z.string().length(3).default("INR"),
   description: z.string().trim().min(1, "Add a course description").max(10000),
+  highlights: z.string().max(10000).optional(),
   thumbnail: z.string().min(1, "Upload a cover image"),
   content: z.array(z.any()).default([]),
   products: z.array(z.any()).default([]),
