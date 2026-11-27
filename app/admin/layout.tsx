@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  Activity, BookOpen, Boxes, FileText, GitPullRequest, GraduationCap, LayoutDashboard,
+  Activity, BookOpen, Boxes, FileText, GitPullRequest, GraduationCap, LayoutDashboard, Sparkles,
   MessageSquare, Package, PlusCircle, ShoppingCart, Star, Users,
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -14,6 +14,7 @@ import { NavbarDropdown } from "@/components/navbar/navbar-dropdown";
 const groups = [
   { title: "Workspace", items: [
     { label: "Overview", href: "/admin", icon: LayoutDashboard },
+    { label: "AI Studio", href: "/admin/ai", icon: Sparkles },
   ]},
   { title: "Content", items: [
     { label: "Courses", href: "/admin/courses", icon: GraduationCap },

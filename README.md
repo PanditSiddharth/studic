@@ -24,6 +24,7 @@
 ### 👤 User Management
 - **🔐 Authentication** - Credentials, Google, and GitHub sign-in via NextAuth.js
 - **👨‍💼 Admin Dashboard** - Comprehensive analytics and content management interface
+- **✨ Admin AI Studio** - Draft articles/products with local or hosted AI providers, validate bulk JSON, and review before publishing
 - **💰 User Profiles** - Transaction history, purchase management, and account settings
 - **📧 Email Notifications** - Automated emails for orders, reviews, and queries
 
@@ -173,6 +174,7 @@ AUTH_SECRET=long_random_secret
 NEXTAUTH_SECRET=long_random_secret
 AUTH_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
+AI_SETTINGS_ENCRYPTION_KEY=long_random_secret_for_encrypting_saved_ai_provider_keys
 
 # OAuth providers
 AUTH_GOOGLE_ID=google_client_id
@@ -214,6 +216,14 @@ Do not commit `.env`, `.env.local`, or any secret values. For local development,
 the browser, so never put private credentials in them. Set the Razorpay key ID in
 `NEXT_PUBLIC_RAZORPAY_KEY_ID`; keep `RAZORPAY_KEY_SECRET` server-only. Configure both keys in
 your Razorpay test account to test product or course checkout.
+
+`AI_SETTINGS_ENCRYPTION_KEY` should be a separate random secret and must stay the same between
+deployments so saved AI provider keys can be decrypted. If it is unset, AI Studio falls back to
+`NEXTAUTH_SECRET`. Configure the same value in local `.env.local` and the deployment environment.
+Provider API keys are entered in the admin-only `/admin/ai` settings and stored encrypted in MongoDB.
+Local Ollama profiles default to `http://localhost:11434`; this works only when the Studic server can
+reach that machine. For remote deployments, use a reachable private endpoint or a hosted provider.
+Provider quotas and free tiers vary; the app does not promise free inference or image generation.
 
 For Vercel deployments, add the Brevo variables to the project's Environment Variables for each
 target environment (Production, Preview, and/or Development), then redeploy. Use Brevo SMTP
@@ -276,6 +286,36 @@ Turbopack; use `npm run dev:webpack` if you need to compare Webpack behavior.
 - Revenue tracking
 - Content performance
 - Transaction analytics
+
+### ✨ Admin AI Studio
+- Configure local Ollama, OpenAI, Gemini, Claude, and custom OpenAI-compatible text providers
+- Generate product/article content into a persistent review queue; AI output is never auto-published
+- Optionally generate thumbnails through a configured image-capable provider and upload them to Cloudinary as 1280×720 images
+- Import arrays of typed product/article JSON or `{ "products": [], "articles": [] }`; validation reports invalid rows before they enter the queue
+- Save reviewed items as normal catalogue drafts, then finish and publish them manually in the existing editors
+
+Example JSON import:
+
+```json
+[
+  {
+    "type": "product",
+    "title": "IGNOU revision notes",
+    "description": "Verified summary of the downloadable resource.",
+    "tags": ["IGNOU", "revision"],
+    "price": 0,
+    "fileLink": ""
+  },
+  {
+    "type": "article",
+    "title": "A focused study plan",
+    "description": "A short article summary.",
+    "content": "## Choose one goal\nWrite original article content here.",
+    "category": ["study-skills"],
+    "tags": ["study plan"]
+  }
+]
+```
 
 ---
 

@@ -39,6 +39,31 @@ async function uploadToCloudinary(blob: Blob, fileName: string) {
   return result.secure_url
 }
 
+export async function uploadGeneratedThumbnail(dataUrl: string) {
+  if (!dataUrl.startsWith('data:image/')) throw new Error('Generated thumbnail data is invalid.')
+  const image = new window.Image()
+  image.src = dataUrl
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve()
+    image.onerror = () => reject(new Error('Could not read the generated thumbnail.'))
+  })
+
+  const canvas = document.createElement('canvas')
+  canvas.width = 1280
+  canvas.height = 720
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Your browser cannot process this image.')
+  const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight)
+  const width = image.naturalWidth * scale
+  const height = image.naturalHeight * scale
+  context.imageSmoothingQuality = 'high'
+  context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height)
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not prepare the generated thumbnail.')), 'image/jpeg', 0.88)
+  )
+  return uploadToCloudinary(blob, `studic-ai-thumbnail-${Date.now()}.jpg`)
+}
+
 function ImageCropper({ preview, aspectRatio, onCancel, onUploaded }: CropperProps) {
   const [zoom, setZoom] = useState(1)
   const [minZoom, setMinZoom] = useState(1)
