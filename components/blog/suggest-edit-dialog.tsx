@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "react-toastify";
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { submitArticleContribution, getMyArticleContribution } from "@/server-functions/contribution";
+import { submitArticleContribution } from "@/server-functions/contribution";
 
 type SuggestEditProps = {
   /** Article id and its current full markdown; edits are proposals against this snapshot. */
@@ -28,9 +28,10 @@ export default function SuggestEditDialog({ blogId, title, content, contribution
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (open) setDraft(content || "");
-  }, [open, content]);
+  const handleOpenChange = (next: boolean) => {
+    if (next) setDraft(content || "");
+    setOpen(next);
+  };
 
   const signedIn = status === "authenticated";
   const pending = contribution?.status === "pending";
@@ -61,7 +62,7 @@ export default function SuggestEditDialog({ blogId, title, content, contribution
         variant="outline"
         size="sm"
         className="gap-2"
-        onClick={() => (signedIn ? setOpen(true) : undefined)}
+        onClick={() => (signedIn ? handleOpenChange(true) : undefined)}
         asChild={!signedIn}
       >
         {signedIn ? (
@@ -78,7 +79,7 @@ export default function SuggestEditDialog({ blogId, title, content, contribution
           : "Sign in to propose edits to this article."}
       </p>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><PencilLine size={16} /> Suggest an edit</DialogTitle>
@@ -95,7 +96,7 @@ export default function SuggestEditDialog({ blogId, title, content, contribution
             placeholder={title ? `Write the updated article: ${title}` : "Write the updated article"}
           />
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] text-muted-foreground">{draft.length.toLocaleString()} / 120,000 characters</p>
+            <p className="text-[11px] text-muted-foreground">{draft.length.toLocaleString("en-IN")} / 120,000 characters</p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
               <Button onClick={submit} disabled={busy || draft.trim().length < 20} className="gap-2">

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { cn } from '@/modals/utils';
 
 const Loader = () => {
   return (

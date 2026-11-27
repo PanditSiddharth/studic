@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
 import LegalPage, { type LegalSection } from "@/components/informative/legal-page";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
+  path: "/privacy",
   title: "Privacy Policy",
   description: "Read how Studic collects, uses and protects account, payment and usage information.",
-  alternates: { canonical: "/privacy" },
-};
+});
 
 const sections: LegalSection[] = [
   { id: "collection", title: "Information we collect", body: "We may collect your name, email address, account details, learning activity, support messages and transaction details. We may also receive technical information such as device, browser, approximate location and IP address when you use the website." },

@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMyLibrary, updateMyProfile } from "@/server-functions/library";
 import { formatPrice } from "@/components/product/product-card";
 import { cn } from "@/modals/utils";
+import { formatDate } from "@/lib/date";
 import { CloudinaryImageUpload } from "@/components/product/image-upload";
 import type { ProfileAccent } from "@/modals/user.model";
 
@@ -265,7 +266,7 @@ export default function ProfileView() {
   }
 
   const { user, stats } = library;
-  const joined = user.createdOn ? new Date(user.createdOn).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : null;
+  const joined = user.createdOn ? formatDate(user.createdOn, { month: "long", year: "numeric" }) : null;
   const activeAccent = editing ? form.profileAccent : user.profileAccent || "violet";
   const activeCover = editing ? form.coverImage : user.coverImage;
   const coverOverlay = activeCover
@@ -495,7 +496,7 @@ export default function ProfileView() {
                     <Link href={`/course/${course.slug}`} className="line-clamp-2 text-sm font-medium hover:text-primary">{course.title}</Link>
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {course.enrollmentStatus === "completed" ? "Completed" : "Enrolled"}
-                      {course.enrolledAt ? ` · ${new Date(course.enrolledAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}` : ""}
+                      {course.enrolledAt ? ` · ${formatDate(course.enrolledAt)}` : ""}
                     </p>
                     <div className="mt-auto pt-2">
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -574,7 +575,7 @@ export default function ProfileView() {
                     </Link>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {order.orderId}
-                      {order.createdOn ? ` · ${new Date(order.createdOn).toLocaleDateString("en-IN", { dateStyle: "medium" })}` : ""}
+                      {order.createdOn ? ` · ${formatDate(order.createdOn)}` : ""}
                     </p>
                   </div>
                   <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize", statusStyles[order.status] || "bg-muted text-muted-foreground")}>

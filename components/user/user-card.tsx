@@ -3,7 +3,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import Image from "next/image"
 import { EyeIcon } from "lucide-react"
 import { IUser } from "@/modals/user.model"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { UserOptions } from "@/types"
@@ -12,30 +12,24 @@ import UserActionDropdown from "./user-action"
 import HandleDeleteAccount from "./delete-profile"
 
 const UserCard = ({ user, username, options }: { user: IUser, username?: string, options: UserOptions }) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [isOwner, setIsOwner] = useState(false)
-    const { data: session, status } = useSession()
+    const { data: session } = useSession()
     const [openedDelete, setOpenedDelete] = useState(false);
-    useEffect(() => {
-        if (username?.split('@')[1] === session?.user.username || session?.user.role == "admin")
-            setIsOwner(true)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [status])
+    const isOwner = username?.split('@')[1] === session?.user.username || session?.user.role === "admin";
     if (!user) {
         return <div>Faltu ka call kiu kar raha</div>;
     }
 
 
-    options.hz = options.hz || false
+    const hz = options.hz || false
 
     return (<Card className={
-        clsx("flex", "overflow-hidden relative rounded-none  ", !options.hz && "md:flex-col")
+        clsx("flex", "overflow-hidden relative rounded-none  ", !hz && "md:flex-col")
     }>
         <CardHeader className="px-2 py-0">
             <Link href={`/@${user.username}`}
                 className={clsx("relative", "aspect-square", "md:aspect-square", "blur-animation h-full rounded-full",
-                    !options.hz ? "md:w-full" : "md:h-full",
-                    !options.hz ? "md:h-auto" : "md:w-auto"
+                    !hz ? "md:w-full" : "md:h-full",
+                    !hz ? "md:h-auto" : "md:w-auto"
                 )}
             >
                 <Image

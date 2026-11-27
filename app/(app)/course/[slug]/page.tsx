@@ -1,49 +1,95 @@
 import type { Metadata } from "next";
+import { cache } from "react";
+import { notFound, permanentRedirect } from "next/navigation";
 import CourseDetail from "@/components/course/course-detail";
 import JsonLd from "@/components/seo/json-ld";
 import { getCourse } from "@/server-functions/course";
-import { absoluteUrl, cleanMetaText } from "@/lib/seo";
+import { getItemAccess } from "@/server-functions/library";
+import { absoluteUrl, breadcrumbSchema, cleanMetaText, createPageMetadata, resolveCanonical } from "@/lib/seo";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+type Props = { params: Promise<{ slug: string }> };
+
+const loadCourse = cache((slug: string) => getCourse({ slug, blogs: true, products: true }));
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const result = await getCourse({ slug });
-  if ("error" in result) return { title: "Course unavailable", robots: { index: false, follow: false } };
+  const normalizedSlug = slug.toLowerCase();
+  const result = await loadCourse(normalizedSlug);
+  if ("error" in result) {
+    return createPageMetadata({
+      path: `/course/${normalizedSlug}`,
+      title: "Course unavailable",
+      description: "This course could not be found.",
+      noindex: true,
+    });
+  }
+
   const title = cleanMetaText(result.title, "Online course");
-  return {
+  return createPageMetadata({
+    path: `/course/${normalizedSlug}`,
     title,
     description: cleanMetaText(result.description, `Learn ${title} with a practical course on Studic.`),
-    alternates: { canonical: `/course/${slug}` },
-    openGraph: {
-      type: "website",
-      title,
-      description: cleanMetaText(result.description, title),
-      url: absoluteUrl(`/course/${slug}`),
-      images: result.thumbnail
-        ? [{ url: result.thumbnail }]
-        : [{ url: absoluteUrl("/studic-og.png"), width: 1200, height: 630, alt: "Studic - Learn, Build and Grow" }],
-    },
-  };
+    image: result.thumbnail,
+    ogImage: result.ogImage,
+    seoTitle: result.seoTitle,
+    seoDescription: result.seoDescription,
+    seoKeywords: result.seoKeywords,
+    canonicalUrl: result.canonicalUrl,
+    noindex: result.noindex || result.status !== "published",
+  });
 }
 
-export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CoursePage({ params }: Props) {
   const { slug } = await params;
-  const result = await getCourse({ slug });
-  const course = "error" in result ? null : result;
+  const normalizedSlug = slug.toLowerCase();
+  if (slug !== normalizedSlug) permanentRedirect(`/course/${normalizedSlug}`);
+
+  const result = await loadCourse(normalizedSlug);
+  if ("error" in result) {
+    if (result.error === "No course found") notFound();
+    throw new Error(result.error);
+  }
+
+  const initialAccess = result._id ? await getItemAccess({ courseId: String(result._id) }) : null;
+  const path = `/course/${normalizedSlug}`;
+  const canonical = resolveCanonical(path, result.canonicalUrl);
+  const isPublic = result.status === "published" && !result.noindex;
+
   return (
     <>
-      {course && (
+      {isPublic ? (
         <JsonLd data={{
           "@context": "https://schema.org",
-          "@type": "Course",
-          name: course.title,
-          description: course.description,
-          url: absoluteUrl(`/course/${slug}`),
-          image: course.thumbnail || undefined,
-          provider: { "@type": "Organization", name: "Studic", url: absoluteUrl("/") },
-          offers: { "@type": "Offer", price: Number(course.price || 0), priceCurrency: course.currency || "INR", availability: "https://schema.org/InStock", url: absoluteUrl(`/course/${slug}`) },
+          "@graph": [
+            {
+              "@type": "Course",
+              name: result.title,
+              description: result.description,
+              url: canonical,
+              image: result.ogImage || result.thumbnail || undefined,
+              provider: { "@type": "Organization", "@id": `${absoluteUrl("/")}#organization`, name: "Studic", url: absoluteUrl("/") },
+              offers: {
+                "@type": "Offer",
+                price: Number(result.price || 0),
+                priceCurrency: result.currency || "INR",
+                availability: "https://schema.org/InStock",
+                url: canonical,
+              },
+            },
+            breadcrumbSchema([
+              { name: "Home", path: "/" },
+              { name: "Courses", path: "/courses" },
+              { name: String(result.title || "Course"), path },
+            ]),
+          ],
         }} />
-      )}
-      <CourseDetail slug={slug} />
+      ) : null}
+      <CourseDetail
+        key={normalizedSlug}
+        slug={normalizedSlug}
+        initialCourse={result}
+        initialAccess={initialAccess}
+      />
     </>
   );
 }

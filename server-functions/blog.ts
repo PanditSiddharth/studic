@@ -5,6 +5,7 @@ import { CourseModel } from "@/modals/course.model";
 import { getSessionUser } from "./user";
 import mongoose from "mongoose";
 import { blogFilter, isHiddenBlogStatus, isPaidBlog, normalizeBlogCategories } from "@/helpers";
+import { toUrlSlug } from "@/lib/slug";
 import { getItemAccess } from "./library";
 import { cloudinaryReference } from "@/lib/cloudinary";
 
@@ -120,7 +121,7 @@ export async function getBlog(opt: GetBlogOptions = {}): Promise<BlogResult | { 
 
         if (opt?.category) {
             const categories = normalizeBlogCategories(blog.category);
-            if (!categories.includes(opt.category.trim().toLowerCase()))
+            if (!categories.some((item) => toUrlSlug(item) === toUrlSlug(opt.category)))
                 return { error: "No blog found" }
         }
 
@@ -199,8 +200,9 @@ export async function getBlogs(options: GetBlogsOptions): Promise<ResProps | { e
     await connectDB()
 
     try {
-        const user = await getSessionUser();
-        const isAdmin = user?.role === "admin";
+        // Public-only callers never need the session. Skipping the auth lookup
+        // keeps pages such as /blogs statically renderable at build time.
+        const isAdmin = options.publicOnly ? false : (await getSessionUser())?.role === "admin";
         // Admin pickers can request drafts; every other caller only ever sees
         // listed (public/paid/free) articles. Unlisted stays link-only.
         const publicOnly = Boolean(options.publicOnly) || !isAdmin;

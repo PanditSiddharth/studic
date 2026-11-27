@@ -111,12 +111,17 @@ const Carousel = React.forwardRef<
         return
       }
 
-      onSelect(api)
+      // Sync the initial scroll state from Embla on the next frame. Reading the
+      // external store directly during the effect body would trigger the
+      // setState-in-effect lint rule.
+      const frame = requestAnimationFrame(() => onSelect(api))
       api.on("reInit", onSelect)
       api.on("select", onSelect)
 
       return () => {
-        api?.off("select", onSelect)
+        cancelAnimationFrame(frame)
+        api.off("reInit", onSelect)
+        api.off("select", onSelect)
       }
     }, [api, onSelect])
 

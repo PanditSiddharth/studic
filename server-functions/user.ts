@@ -117,7 +117,9 @@ export const getUserByUsername = async (username: string) => {
         const user = await UserModel.findOne({ username }).lean()
         if (user) {
             if (!userlog || userlog.role != "admin" && username !== userlog?.username) {
-                const { phone, email, ...publicUser } = user;
+                const publicUser = { ...user };
+                delete (publicUser as { phone?: unknown }).phone;
+                delete (publicUser as { email?: unknown }).email;
                 return JSON.parse(JSON.stringify(publicUser))
             }
 

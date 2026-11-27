@@ -3,7 +3,7 @@ import { BarLoader } from "react-spinners";
 import InfiniteScroll, { Props } from 'react-infinite-scroll-component'
 import { cn } from "@/modals/utils";
 import { useSession } from "next-auth/react";
-import { JSX, useEffect } from "react";
+import { JSX, useEffect, useRef } from "react";
 
 interface DataInfiniteOptions <T> {
     data: T[];
@@ -17,8 +17,9 @@ interface DataInfiniteOptions <T> {
 const Scroll = <T,>({ data, next, element, totalLength, scrollerOptions, className, className2}: DataInfiniteOptions<T>) => {
 
     const { status } = useSession()
-console.log(data)
-    useEffect(()=> {next()}, [])
+    const nextRef = useRef(next)
+    useEffect(() => { nextRef.current = next })
+    useEffect(() => { nextRef.current() }, [])
     if (status == "loading") {
         return (
             <div className="w-full">

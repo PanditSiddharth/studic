@@ -36,12 +36,14 @@ export const blogFilter = (blog: any = {}): Partial<IBlog> => {
     const {
         _id, slug, title, status, description, thumbnail, content, tags, category,
         products, author, publishedAt, updatedAt, createdOn, estimatedMinutes,
-        course, seoTitle, seoDescription, accessType, price, currency, externalLink, externalLinkLabel
+        course, seoTitle, seoDescription, seoKeywords, ogImage, canonicalUrl, noindex,
+        accessType, price, currency, externalLink, externalLinkLabel
     }: Partial<IBlog> = blog;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, status, description, thumbnail, content,
         tags, category: normalizeCategories(category), products, author: plainId(author), publishedAt, updatedAt,
         createdOn, estimatedMinutes, course: plainId(course), seoTitle, seoDescription,
+        seoKeywords, ogImage, canonicalUrl, noindex,
         accessType, price, currency, externalLink, externalLinkLabel
     }));
 };
@@ -69,13 +71,14 @@ export const courseFilter = (course: any = {}): Partial<ICourse> => {
     const {
         _id, slug, tags, title, status, price, description, highlights, thumbnail, content,
         author, publishedAt, createdOn, updatedAt, accessType, currency, level,
-        language, estimatedMinutes, prerequisites, landingPage, products, externalLink, externalLinkLabel
+        language, estimatedMinutes, prerequisites, landingPage, products, externalLink, externalLinkLabel,
+        seoTitle, seoDescription, seoKeywords, ogImage, canonicalUrl, noindex
     }: Partial<ICourse> = course;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, status, tags, price, description, highlights, thumbnail,
         content, author: plainId(author), publishedAt, createdOn, updatedAt,
         accessType, currency, level, language, estimatedMinutes, prerequisites, landingPage, products,
-        externalLink, externalLinkLabel
+        externalLink, externalLinkLabel, seoTitle, seoDescription, seoKeywords, ogImage, canonicalUrl, noindex
     }));
 };
 
@@ -97,12 +100,14 @@ export const productFilter = (product: any = {}, str?: any): Partial<IProduct> =
     const {
         _id, slug, title, price, description, thumbnail, tags, fileLink,
         publishedAt, status, currency, fileName, fileSize, mimeType,
-        downloadLimit, createdOn, updatedAt, externalLink, externalLinkLabel
+        downloadLimit, createdOn, updatedAt, externalLink, externalLinkLabel,
+        seoTitle, seoDescription, seoKeywords, ogImage, canonicalUrl, noindex
     }: Partial<IProduct> = copy;
     return JSON.parse(JSON.stringify({
         _id: plainId(_id), slug, title, price, description, thumbnail, tags,
         fileLink, publishedAt, status, currency, fileName,
-        fileSize, mimeType, downloadLimit, createdOn, updatedAt, externalLink, externalLinkLabel
+        fileSize, mimeType, downloadLimit, createdOn, updatedAt, externalLink, externalLinkLabel,
+        seoTitle, seoDescription, seoKeywords, ogImage, canonicalUrl, noindex
     }));
 };
 

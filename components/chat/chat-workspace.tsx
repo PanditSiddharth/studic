@@ -66,7 +66,7 @@ export default function ChatWorkspace() {
         setIsAdmin(data.isAdmin);
         setCurrentUserId(data.currentUserId);
         if (data.scope !== scope) setScope(data.scope);
-      } catch (error) {
+      } catch {
         if (!silent) toast.error("Could not load chats");
       } finally {
         if (!silent) setLoadingChats(false);
@@ -77,7 +77,7 @@ export default function ChatWorkspace() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    void loadChats();
+    void (async () => { await loadChats(); })();
   }, [loadChats, status]);
 
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function ChatWorkspace() {
       setChats((current) =>
         current.map((item) => (item._id === chatId ? { ...item, unread: 0 } : item))
       );
-    } catch (error) {
+    } catch {
       toast.error("Could not open this chat");
     } finally {
       setLoadingChat(false);
@@ -135,7 +135,7 @@ export default function ChatWorkspace() {
   useEffect(() => {
     const requestedChat = searchParams.get("chat");
     if (status === "authenticated" && requestedChat && !loadingChats) {
-      void openChat(requestedChat);
+      void (async () => { await openChat(requestedChat); })();
     }
   }, [loadingChats, openChat, searchParams, status]);
 
@@ -205,7 +205,7 @@ export default function ChatWorkspace() {
           )
         );
         return true;
-      } catch (error) {
+      } catch {
         toast.error("Could not send your message");
         return false;
       } finally {
@@ -278,6 +278,7 @@ export default function ChatWorkspace() {
         />
 
         <ChatWindow
+          key={chat?._id ?? "no-chat"}
           chat={chat}
           messages={messages}
           loading={loadingChat}

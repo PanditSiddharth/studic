@@ -12,7 +12,6 @@ import { IUser } from "@/modals/user.model";
 import Link from "next/link";
 
 export default function UserActionDropdown({ user, setOpenedDelete }:
-    // eslint-disable-next-line 
      { user: IUser, setOpenedDelete: any }) {
   
 

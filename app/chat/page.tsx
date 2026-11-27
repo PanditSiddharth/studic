@@ -1,13 +1,13 @@
-import type { Metadata } from "next";
 import { Suspense } from "react";
 import ChatWorkspace from "@/components/chat/chat-workspace";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
+  path: "/chat",
   title: "Chats",
   description: "Message learners, mentors and groups on Studic.",
-  alternates: { canonical: "/chat" },
-  robots: { index: false, follow: false },
-};
+  noindex: true,
+});
 
 export default function ChatPage() {
   return (

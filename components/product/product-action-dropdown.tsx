@@ -16,7 +16,6 @@ import { showTransactionDetails } from "../others/transaction-details";
 import { downloadLink } from "./download-product";
 import { usePathname, useRouter } from "next/navigation";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function ProductActionDropdown({ product, username, options }: { product: Partial<IProduct> & {transactionId?: string}, username: string, options: ProductOptions }) {
 
     const { data: session } = useSession()

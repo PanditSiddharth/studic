@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,7 +11,6 @@ import {
   ArrowLeft, BadgeCheck, BookOpen, ChevronRight, Clock3, Download, ExternalLink, Globe2,
   Layers, Loader2, Lock, Package, PlayCircle, ShieldCheck, Sparkles,
 } from "lucide-react";
-import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
@@ -55,14 +54,20 @@ function getDescriptionParagraphs(description: string) {
     );
 }
 
-export default function CourseDetail({ slug }: { slug: string }) {
+export default function CourseDetail({
+  slug,
+  initialCourse,
+  initialAccess,
+}: {
+  slug: string;
+  initialCourse: Partial<ICourse>;
+  initialAccess: Access | null;
+}) {
   const { theme, systemTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
-  const [course, setCourse] = useState<Partial<ICourse> | null>(null);
-  const [access, setAccess] = useState<Access | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadedSlug, setLoadedSlug] = useState<string | undefined>();
+  const [course, setCourse] = useState<Partial<ICourse> | null>(initialCourse);
+  const [access, setAccess] = useState<Access | null>(initialAccess);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -83,22 +88,6 @@ export default function CourseDetail({ slug }: { slug: string }) {
   const load = useCallback(async () => {
     const result = await getCourse({ slug, blogs: true, products: true });
     await applyCourseResult(result);
-  }, [slug, applyCourseResult]);
-
-  useEffect(() => {
-    let cancelled = false;
-    getCourse({ slug, blogs: true, products: true })
-      .then((result) => {
-        if (!cancelled) return applyCourseResult(result);
-      })
-      .catch(() => { if (!cancelled) setError("This course could not be loaded."); })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadedSlug(slug);
-          setLoading(false);
-        }
-      });
-    return () => { cancelled = true; };
   }, [slug, applyCourseResult]);
 
   const enroll = async () => {
@@ -143,8 +132,6 @@ export default function CourseDetail({ slug }: { slug: string }) {
       setBusy(false);
     }
   };
-
-  if (loading || loadedSlug !== slug) return <Loader />;
 
   if (error || !course) {
     return (

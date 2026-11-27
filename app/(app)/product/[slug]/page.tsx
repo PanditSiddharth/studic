@@ -1,49 +1,89 @@
 import type { Metadata } from "next";
+import { cache } from "react";
+import { notFound, permanentRedirect } from "next/navigation";
 import ProductDetail from "@/components/product/product-detail";
 import JsonLd from "@/components/seo/json-ld";
 import { getPublishedProduct } from "@/server-functions/product";
-import { absoluteUrl, cleanMetaText } from "@/lib/seo";
+import { breadcrumbSchema, cleanMetaText, createPageMetadata, resolveCanonical } from "@/lib/seo";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+type Props = { params: Promise<{ slug: string }> };
+
+const loadProduct = cache((slug: string) => getPublishedProduct(slug));
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const result = await getPublishedProduct(slug);
-  if ("error" in result) return { title: "Product unavailable", robots: { index: false, follow: false } };
-  const title = cleanMetaText(result.product.title, "Digital product");
-  const description = cleanMetaText(result.product.description, `Download ${title} from Studic.`);
-  return {
+  const normalizedSlug = slug.toLowerCase();
+  const result = await loadProduct(normalizedSlug);
+  if ("error" in result) {
+    return createPageMetadata({
+      path: `/product/${normalizedSlug}`,
+      title: "Product unavailable",
+      description: "This product could not be found.",
+      noindex: true,
+    });
+  }
+
+  const product = result.product;
+  const title = cleanMetaText(product.title, "Digital product");
+  return createPageMetadata({
+    path: `/product/${normalizedSlug}`,
     title,
-    description,
-    alternates: { canonical: `/product/${slug}` },
-    openGraph: {
-      type: "website",
-      title,
-      description,
-      url: absoluteUrl(`/product/${slug}`),
-      images: result.product.thumbnail
-        ? [{ url: result.product.thumbnail }]
-        : [{ url: absoluteUrl("/studic-og.png"), width: 1200, height: 630, alt: "Studic - Learn, Build and Grow" }],
-    },
-  };
+    description: cleanMetaText(product.description, `Download ${title} from Studic.`),
+    image: product.thumbnail,
+    ogImage: product.ogImage,
+    seoTitle: product.seoTitle,
+    seoDescription: product.seoDescription,
+    seoKeywords: product.seoKeywords,
+    canonicalUrl: product.canonicalUrl,
+    noindex: product.noindex,
+  });
 }
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const result = await getPublishedProduct(slug);
-  const product = "error" in result ? null : result.product;
+  const normalizedSlug = slug.toLowerCase();
+  if (slug !== normalizedSlug) permanentRedirect(`/product/${normalizedSlug}`);
+
+  const result = await loadProduct(normalizedSlug);
+  if ("error" in result) {
+    if (result.error === "This product could not be found") notFound();
+    throw new Error(result.error);
+  }
+
+  const product = result.product;
+  const path = `/product/${normalizedSlug}`;
+  const canonical = resolveCanonical(path, product.canonicalUrl);
+  const isPublic = product.status !== "archived" && !product.noindex;
+
   return (
     <>
-      {product && (
+      {isPublic ? (
         <JsonLd data={{
           "@context": "https://schema.org",
-          "@type": "Product",
-          name: product.title,
-          description: product.description,
-          image: product.thumbnail || undefined,
-          url: absoluteUrl(`/product/${slug}`),
-          offers: { "@type": "Offer", price: Number(product.price || 0), priceCurrency: product.currency || "INR", availability: "https://schema.org/InStock", url: absoluteUrl(`/product/${slug}`) },
+          "@graph": [
+            {
+              "@type": "Product",
+              name: product.title,
+              description: product.description,
+              image: product.ogImage || product.thumbnail || undefined,
+              url: canonical,
+              offers: {
+                "@type": "Offer",
+                price: Number(product.price || 0),
+                priceCurrency: product.currency || "INR",
+                availability: "https://schema.org/InStock",
+                url: canonical,
+              },
+            },
+            breadcrumbSchema([
+              { name: "Home", path: "/" },
+              { name: "Products", path: "/products" },
+              { name: String(product.title || "Product"), path },
+            ]),
+          ],
         }} />
-      )}
-      <ProductDetail slug={slug} />
+      ) : null}
+      <ProductDetail key={normalizedSlug} slug={normalizedSlug} initialData={result} />
     </>
   );
 }

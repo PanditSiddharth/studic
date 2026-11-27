@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
 import LegalPage, { type LegalSection } from "@/components/informative/legal-page";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Refund & Cancellation Policy", description: "Understand cancellations, refunds and support options for Studic courses and digital educational products.", alternates: { canonical: "/refund" } };
+export const metadata = createPageMetadata({ path: "/refund", title: "Refund & Cancellation Policy", description: "Understand cancellations, refunds and support options for Studic courses and digital educational products." });
 const sections: LegalSection[] = [
   { id: "digital", title: "Digital products", body: "Because digital products can be delivered immediately, purchases are generally non-refundable once the file has been delivered or downloaded, except where required by applicable law or where the file is materially defective." },
   { id: "courses", title: "Courses and access", body: "If a course access issue is caused by a technical problem on our side and cannot reasonably be fixed, contact us promptly so we can investigate and provide an appropriate resolution." },

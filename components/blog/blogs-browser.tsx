@@ -1,26 +1,35 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, CalendarDays, Clock3, FileText, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/date";
 import { Input } from "@/components/ui/input";
 import { getBlogs } from "@/server-functions/blog";
 import type { IBlog } from "@/modals/blog.model";
 import { cn } from "@/modals/utils";
+import { toUrlSlug } from "@/lib/slug";
 
 const PAGE_SIZE = 9;
 
-export default function BlogsBrowser() {
-  const [blogs, setBlogs] = useState<IBlog[]>([]);
-  const [total, setTotal] = useState(0);
+export default function BlogsBrowser({
+  initialBlogs,
+  initialTotal,
+}: {
+  initialBlogs: IBlog[];
+  initialTotal: number;
+}) {
+  const [blogs, setBlogs] = useState<IBlog[]>(initialBlogs);
+  const [total, setTotal] = useState(initialTotal);
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const initialLoad = useRef(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setActiveSearch(search.trim()), 350);
@@ -28,6 +37,11 @@ export default function BlogsBrowser() {
   }, [search]);
 
   useEffect(() => {
+    if (initialLoad.current && !activeSearch && !category) {
+      initialLoad.current = false;
+      return;
+    }
+    initialLoad.current = false;
     let cancelled = false;
     setLoading(true);
     getBlogs({
@@ -171,7 +185,7 @@ export default function BlogsBrowser() {
         <>
           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {blogs.map((blog) => {
-              const href = blog.category?.length ? `/t/${blog.category[0]}/${blog.slug}` : `/t/${blog.slug}`;
+              const href = blog.category?.length ? `/t/${toUrlSlug(blog.category[0])}/${blog.slug}` : `/t/${blog.slug}`;
               const isPaid = blog.accessType === "paid" || blog.status === "paid" || Number(blog.price) > 0;
               return (
                 <article
@@ -209,7 +223,7 @@ export default function BlogsBrowser() {
 
                     <div className="mt-auto flex items-center justify-between gap-2 pt-4 text-[11px] text-muted-foreground">
                       <span className="flex flex-wrap items-center gap-2">
-                        {blog.publishedAt && <span className="inline-flex items-center gap-1"><CalendarDays size={11} /> {new Date(blog.publishedAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}</span>}
+                        {blog.publishedAt && <span className="inline-flex items-center gap-1"><CalendarDays size={11} /> {formatDate(blog.publishedAt)}</span>}
                         {Boolean(blog.estimatedMinutes) && <span className="inline-flex items-center gap-1"><Clock3 size={11} /> {blog.estimatedMinutes} min</span>}
                       </span>
                       <Link href={href} className="inline-flex items-center gap-1 font-medium text-primary">Read <ArrowUpRight size={12} /></Link>

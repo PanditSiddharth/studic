@@ -17,8 +17,7 @@ interface UsersListProps {
     options: UserOptions
 }
 const UsersList = ({ username, options }: UsersListProps) => {
-    options = options || {};
-    options.list = options?.list || {
+    const list = options?.list || {
         xs: 1,
         sm: 3,
         md: 4,
@@ -108,7 +107,6 @@ const UsersList = ({ username, options }: UsersListProps) => {
             </div>
         )
     }
-    const list = options.list
     const arr = {
         sm: ['sm:grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3'],
         md: ['md:grid-cols-1', 'md:grid-cols-2', 'md:grid-cols-3', 'md:grid-cols-4', 'md:grid-cols-5'],

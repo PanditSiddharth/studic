@@ -1,20 +1,13 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
 import { ArrowRight, BookOpen, CheckCircle2, GraduationCap, Sparkles } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "About | Practical Online Learning",
+export const metadata = createPageMetadata({
+  path: "/about",
+  title: "About Studic",
   description: "Discover Studic, an affordable online learning platform for practical courses, articles and digital educational resources.",
-  keywords: ["Studic", "online learning", "IGNOU study material", "coding courses", "digital educational products"],
-  alternates: { canonical: "/about" },
-  openGraph: {
-    title: "About Studic",
-    description: "Practical, affordable learning for students and curious builders.",
-    url: "/about",
-    type: "website",
-    images: [{ url: "/studic-og.png", width: 1200, height: 630, alt: "Studic - Learn, Build and Grow" }],
-  },
-};
+  seoKeywords: ["online learning", "IGNOU study resources", "coding courses", "digital educational resources"],
+});
 
 const pillars = [
   { icon: GraduationCap, title: "Learn with clarity", text: "Understand concepts through focused lessons, practical examples and useful study resources." },

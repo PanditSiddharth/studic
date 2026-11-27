@@ -4,7 +4,6 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { downloadLink } from "../product/download-product";
 
-// eslint-disable-next-line 
 export const showTransactionDetails = (transaction: Partial<IProduct> & { transactionId?: string } | null,
   pathname: string
 ) => {

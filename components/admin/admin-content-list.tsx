@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Search, Plus, Pencil, Trash2, RefreshCw, ExternalLink } from "lucide-react";
 import { toast } from "react-toastify";
 import { deleteAdminContent, searchAdminContent, updateAdminAccess, updateAdminVisibility } from "@/server-functions/admin-content";
+import { formatDate } from "@/lib/date";
 
 type Kind = "courses" | "blogs" | "products";
 type Item = { _id: string; title: string; slug: string; status?: string; accessType?: string; price?: number; updatedAt?: string; createdOn?: string; description?: string; category?: string[] };
@@ -39,7 +40,9 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
     finally { setLoading(false); }
   }, [kind, search, page]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void (async () => { await load(); })();
+  }, [load]);
   const filtered = status === "all"
     ? items
     : status === "free" || status === "paid"
@@ -105,7 +108,7 @@ export default function AdminContentList({ kind }: { kind: Kind }) {
                 ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(item.price || 0)
                 : kind === "blogs" ? "Free" : item.accessType || "—"
             }</td>
-            <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString("en-IN") : item.createdOn ? new Date(item.createdOn).toLocaleDateString("en-IN") : "—"}</td>
+            <td className="whitespace-nowrap px-4 py-4 text-muted-foreground">{formatDate(item.updatedAt || item.createdOn) || "—"}</td>
             <td className="px-5 py-4"><div className="flex justify-end gap-2">
               <select aria-label={`Status for ${item.title}`} value={["free", "paid"].includes(String(item.status)) ? "public" : item.status || "draft"} disabled={busy} onChange={(e) => changeStatus(item, e.target.value)} className="max-w-28 rounded-md border bg-background px-2 py-1 text-xs">
                 <option value="draft">Draft</option>

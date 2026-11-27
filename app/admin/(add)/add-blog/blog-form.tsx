@@ -10,7 +10,7 @@ import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import {
   ArrowLeft, BookOpen, Clock3, Eye, ExternalLink, FileText, Globe2, ImageIcon, IndianRupee,
-  Loader2, Package, Search, Sparkles, Tag, TriangleAlert,
+  Loader2, Package, Tag, TriangleAlert,
 } from "lucide-react";
 import { ZodBlogSchema } from "@/modals/zod";
 import type { IBlog } from "@/modals/blog.model";
@@ -22,6 +22,7 @@ import { ImageUpload } from "@/components/product/image-upload";
 import { FormActionsBar, FormPageHeader, FormSection, StatusSelect } from "@/components/admin/form-ui";
 import { TagInput } from "@/components/admin/tag-input";
 import { ProductPicker } from "@/components/admin/product-picker";
+import SeoFields from "@/components/admin/seo-fields";
 import type { ProductOption } from "@/server-functions/product";
 import { blogFilter } from "@/helpers";
 import { addOrUpdateBlog } from "@/server-functions/blog";
@@ -63,13 +64,9 @@ export default function AddBlogForm({
   const title = watched.title || "";
   const slug = watched.slug || "";
   const description = watched.description || "";
-  const seoTitle = watched.seoTitle || "";
-  const seoDescription = watched.seoDescription || "";
   const status = watched.status || "draft";
   const accessType = watched.accessType;
 
-  const previewTitle = seoTitle || title || "Article title";
-  const previewDescription = seoDescription || description || "Add a short description so readers know what this article covers.";
   const categories = watched.category || [];
   const firstCategory = categories[0];
   const publicPath = useMemo(
@@ -299,46 +296,12 @@ export default function AddBlogForm({
               />
             </FormSection>
 
-            <FormSection
-              title="Search appearance"
-              description="Optional overrides for how this article appears in search engines."
-              icon={Search}
-            >
-              <MyField
-                form={form}
-                name="seoTitle"
-                label="SEO title"
-                placeholder={title || "Defaults to the article title"}
-                description={
-                  <span className="flex items-center justify-between gap-3">
-                    <span>Leave blank to use the article title.</span>
-                    <span className="tabular-nums">{seoTitle.length}/160</span>
-                  </span>
-                }
-                fields={{ maxLength: 160 }}
-              />
-              <MyField
-                form={form}
-                name="seoDescription"
-                label="SEO description"
-                description={
-                  <span className="flex items-center justify-between gap-3">
-                    <span>Leave blank to use the short description.</span>
-                    <span className="tabular-nums">{seoDescription.length}/320</span>
-                  </span>
-                }
-                input={(field) => (
-                  <Textarea {...field} rows={3} maxLength={320} className="resize-none" placeholder="A concise summary for search engines…" />
-                )}
-              />
-
-              <div className="rounded-xl border bg-background p-4">
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Sparkles size={13} /> Search preview</p>
-                <p className="mt-2 truncate text-xs text-emerald-600 dark:text-emerald-400">studic.example › t › {firstCategory || "category"} › {slug || "your-article-slug"}</p>
-                <p className="mt-1 line-clamp-2 text-base font-medium text-sky-700 dark:text-sky-400">{previewTitle}</p>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{previewDescription}</p>
-              </div>
-            </FormSection>
+            <SeoFields
+              form={form}
+              title={title}
+              description={description}
+              canonicalPath={`/t/${firstCategory || "category"}/${slug || "your-article-slug"}`}
+            />
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">

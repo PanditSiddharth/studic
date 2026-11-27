@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   ArrowLeft, CheckCheck, Clock3, Download, ExternalLink, FileText, Info, Loader2, Lock, MessageCircle, Send, ShieldCheck, Trash2, X,
 } from "lucide-react";
@@ -16,7 +17,7 @@ function AttachmentPreview({ attachment, compact = false }: { attachment: ChatAt
   if (attachment.kind === "image") {
     return (
       <a href={attachment.url} target="_blank" rel="noreferrer" className={cn("group mt-1 block overflow-hidden rounded-xl border border-black/10", compact ? "max-w-[220px]" : "max-w-[280px]")}>
-        <img src={attachment.url} alt={attachment.name} className="block max-h-72 w-full object-cover transition group-hover:opacity-90" />
+        <Image src={attachment.url} alt={attachment.name} width={560} height={400} unoptimized className="block h-auto max-h-72 w-full object-cover transition group-hover:opacity-90" />
       </a>
     );
   }
@@ -82,14 +83,6 @@ export default function ChatWindow({
   const activeChatRef = useRef<string | null>(null);
   const days = groupMessagesByDay(messages);
   const [sendWaitSeconds, setSendWaitSeconds] = useState(0);
-
-  useEffect(() => {
-    setDraft("");
-    setAttachment(undefined);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-  }, [chat?._id]);
 
   useEffect(() => {
     const element = scrollRef.current;

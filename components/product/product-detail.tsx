@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -32,13 +32,11 @@ const formatBytes = (bytes?: number) => {
   return `${value >= 10 || exponent === 0 ? Math.round(value) : value.toFixed(1)} ${units[exponent]}`;
 };
 
-export default function ProductDetail({ slug }: { slug: string }) {
+export default function ProductDetail({ slug, initialData }: { slug: string; initialData: DetailData }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, systemTheme } = useTheme();
-  const [data, setData] = useState<DetailData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadedSlug, setLoadedSlug] = useState<string | undefined>();
+  const [data, setData] = useState<DetailData | null>(initialData);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -58,22 +56,6 @@ export default function ProductDetail({ slug }: { slug: string }) {
   const load = useCallback(async () => {
     const result = await getPublishedProduct(slug);
     applyProductResult(result);
-  }, [slug, applyProductResult]);
-
-  useEffect(() => {
-    let cancelled = false;
-    getPublishedProduct(slug)
-      .then((result) => {
-        if (!cancelled) applyProductResult(result);
-      })
-      .catch(() => { if (!cancelled) setError("This product could not be loaded."); })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadedSlug(slug);
-          setLoading(false);
-        }
-      });
-    return () => { cancelled = true; };
   }, [slug, applyProductResult]);
 
   const claim = async () => {
@@ -129,22 +111,6 @@ export default function ProductDetail({ slug }: { slug: string }) {
       toast.error("Could not copy the link");
     }
   };
-
-  if (loading || loadedSlug !== slug) {
-    return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-        <div className="mt-4 grid gap-8 lg:grid-cols-[1.6fr_0.9fr]">
-          <div className="space-y-4">
-            <div className="aspect-[16/10] animate-pulse rounded-2xl bg-muted" />
-            <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
-            <div className="h-3 w-full animate-pulse rounded bg-muted" />
-          </div>
-          <div className="h-72 animate-pulse rounded-2xl bg-muted" />
-        </div>
-      </div>
-    );
-  }
 
   if (error || !data) {
     return (

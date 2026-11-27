@@ -33,13 +33,13 @@ export const proxy = auth(async (req) => {
   const authRoute = "/auth";
 
   if (pathname === "/product") {
-    return NextResponse.redirect(new URL("/products", req.url));
+    return NextResponse.redirect(new URL("/products", req.url), 301);
   }
   if (pathname === "/course") {
-    return NextResponse.redirect(new URL("/courses", req.url));
+    return NextResponse.redirect(new URL("/courses", req.url), 301);
   }
   if (pathname === "/blog") {
-    return NextResponse.redirect(new URL("/blogs", req.url));
+    return NextResponse.redirect(new URL("/blogs", req.url), 301);
   }
 
   if (isLogged && pathname === authRoute) {

@@ -30,12 +30,18 @@ function SkeletonCard() {
   );
 }
 
-export default function ProductsBrowser() {
-  const [products, setProducts] = useState<IProduct[]>([]);
-  const [total, setTotal] = useState(0);
+export default function ProductsBrowser({
+  initialProducts,
+  initialTotal,
+}: {
+  initialProducts: IProduct[];
+  initialTotal: number;
+}) {
+  const [products, setProducts] = useState<IProduct[]>(initialProducts);
+  const [total, setTotal] = useState(initialTotal);
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadedOnce = useRef(false);
 
@@ -45,6 +51,10 @@ export default function ProductsBrowser() {
   }, [search]);
 
   useEffect(() => {
+    if (!activeSearch && !loadedOnce.current) {
+      loadedOnce.current = true;
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     getPublishedProducts({ skip: 0, postsPerPage: PAGE_SIZE, search: activeSearch })

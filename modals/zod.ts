@@ -4,6 +4,8 @@ const slugSchema = z.string().trim().min(1, "Slug is required").max(180)
   .regex(/^(?!-)(?!.*--)[a-z0-9-]+(?<!-)$/, "Use lowercase letters, numbers and single hyphens");
 
 const tagsSchema = z.array(z.string().trim().min(1)).default([]);
+const seoKeywordsSchema = z.array(z.string().trim().min(1).max(60)).max(12).default([]);
+const canonicalUrlSchema = z.string().trim().max(2048).optional();
 const urlOrEmpty = z.string().url().or(z.literal("")).optional();
 const externalUrlOrEmpty = z.string().trim().url("Enter a valid link")
   .refine((value) => {
@@ -101,6 +103,12 @@ export const ZodProductScema = z.object({
   downloadLimit: z.number().int().positive().nullable().optional(),
   createdOn: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
+  seoTitle: z.string().trim().max(160).optional(),
+  seoDescription: z.string().trim().max(320).optional(),
+  seoKeywords: seoKeywordsSchema,
+  ogImage: externalUrlOrEmpty,
+  canonicalUrl: canonicalUrlSchema,
+  noindex: z.boolean().default(false),
   _id: z.string().optional(),
 });
 
@@ -122,6 +130,10 @@ export const ZodBlogSchema = z.object({
   estimatedMinutes: z.number().int().nonnegative().optional(),
   seoTitle: z.string().max(160, "Keep the SEO title under 160 characters").optional(),
   seoDescription: z.string().max(320, "Keep the SEO description under 320 characters").optional(),
+  seoKeywords: seoKeywordsSchema,
+  ogImage: externalUrlOrEmpty,
+  canonicalUrl: canonicalUrlSchema,
+  noindex: z.boolean().default(false),
   externalLink: externalUrlOrEmpty,
   externalLinkLabel: z.string().trim().max(40, "Keep the button label under 40 characters").optional(),
   publishedAt: z.coerce.date().optional(),
@@ -152,5 +164,11 @@ export const ZodCourseSchema = z.object({
   prerequisites: z.array(z.string()).optional(),
   publishedAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
+  seoTitle: z.string().trim().max(160).optional(),
+  seoDescription: z.string().trim().max(320).optional(),
+  seoKeywords: seoKeywordsSchema,
+  ogImage: externalUrlOrEmpty,
+  canonicalUrl: canonicalUrlSchema,
+  noindex: z.boolean().default(false),
   _id: z.string().optional(),
 });

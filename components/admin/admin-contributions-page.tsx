@@ -9,13 +9,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { reviewArticleContribution, type ContributionResult } from "@/server-functions/contribution";
+import { formatDateTime } from "@/lib/date";
 
 type Queue = {
   pending: ContributionResult[];
@@ -23,8 +23,7 @@ type Queue = {
   stats: { pending: number; approved: number; rejected: number };
 };
 
-const formatDate = (value?: string | Date) =>
-  value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
+const formatDate = (value?: string | Date) => (value ? formatDateTime(value) : "—");
 
 function ContributorBadge({ user }: { user?: ContributionResult["submittedBy"] }) {
   return (
@@ -91,7 +90,7 @@ function PendingContribution({ record }: {
           {changedLines === 0 ? (
             <span className="inline-flex items-center gap-1 text-amber-600"><Hourglass size={12} /> Content mirrors the current article</span>
           ) : (
-            <span className="inline-flex items-center gap-1"><FileText size={12} /> {proposed.length.toLocaleString()} chars</span>
+            <span className="inline-flex items-center gap-1"><FileText size={12} /> {proposed.length.toLocaleString("en-IN")} chars</span>
           )}
           <Link
             className="inline-flex items-center gap-1 hover:text-foreground"

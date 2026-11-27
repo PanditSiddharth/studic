@@ -21,7 +21,7 @@ export async function getAdminOverview() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const [
-    users, courses, articles, products, orders, paidOrders,
+    users, courses, articles, products, orders,
     enrollments, pendingReviews, openQueries, pendingContributions, recentOrders, recentCourses,
   ] = await Promise.all([
     UserModel.countDocuments({ status: { $ne: "deleted" } }),
@@ -29,7 +29,6 @@ export async function getAdminOverview() {
     BlogModel.countDocuments(),
     ProductModel.countDocuments(),
     OrderModel.countDocuments(),
-    OrderModel.countDocuments({ status: "paid", createdOn: { $gte: monthStart } }),
     EnrollmentModel.countDocuments({ status: "active" }),
     ReviewModel.countDocuments({ status: "pending" }),
     QueryModel.countDocuments({ status: { $in: ["open", "in_progress"] } }),

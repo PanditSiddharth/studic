@@ -34,25 +34,29 @@ export default function BlogPicker({ open, onOpenChange, initialSelected = [], o
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
   const [selected, setSelected] = useState<IBlog[]>(initialSelected);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  // Reset the draft selection whenever the picker opens. Adjusting state during
+  // render is the React-recommended way to react to a prop change.
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setSelected(initialSelected);
+      setSearch("");
+      setActiveSearch("");
+    }
+  }
 
   const selectedIds = useMemo(() => new Set(selected.map(idOf)), [selected]);
-
-  // Reset the draft selection whenever the picker opens.
-  useEffect(() => {
-    if (!open) return;
-    setSelected(initialSelected);
-    setSearch("");
-    setActiveSearch("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
 
-    setLoading(true);
-    getBlogs({ skip: 0, postsPerPage: PAGE_SIZE, search: escapeSearch(activeSearch) })
-      .then((result) => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const result = await getBlogs({ skip: 0, postsPerPage: PAGE_SIZE, search: escapeSearch(activeSearch) });
         if (cancelled) return;
         const failure = getActionError(result);
         if (failure) {
@@ -64,9 +68,13 @@ export default function BlogPicker({ open, onOpenChange, initialSelected = [], o
         const page = result as { blogs?: IBlog[]; totalBlogs?: number };
         setItems(page.blogs ?? []);
         setTotal(page.totalBlogs ?? 0);
-      })
-      .catch(() => toast.error("Articles could not be loaded."))
-      .finally(() => { if (!cancelled) setLoading(false); });
+      } catch {
+        if (!cancelled) toast.error("Articles could not be loaded.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
 
     return () => { cancelled = true; };
   }, [open, activeSearch]);

@@ -1,9 +1,5 @@
-import React from 'react'
+import { permanentRedirect } from "next/navigation";
 
-const Page = () => {
-  return (
-    <div>Page</div>
-  )
+export default function CourseIndexRedirect() {
+  permanentRedirect("/courses");
 }
-
-export default Page

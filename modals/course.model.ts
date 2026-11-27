@@ -28,6 +28,12 @@ export interface ICourse {
   externalLink?: string;
   externalLinkLabel?: string;
   publishedAt?: Date;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
+  ogImage?: string;
+  canonicalUrl?: string;
+  noindex?: boolean;
   createdOn?: Date;
   updatedAt?: Date;
 }
@@ -56,6 +62,12 @@ const CourseSchema = new Schema<ICourse>(
     externalLink: { type: String, trim: true },
     externalLinkLabel: { type: String, trim: true, maxlength: 40 },
     publishedAt: { type: Date },
+    seoTitle: { type: String, trim: true, maxlength: 160 },
+    seoDescription: { type: String, trim: true, maxlength: 320 },
+    seoKeywords: { type: [String], default: [] },
+    ogImage: { type: String, trim: true },
+    canonicalUrl: { type: String, trim: true, maxlength: 2048 },
+    noindex: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: "createdOn", updatedAt: "updatedAt" }, minimize: false }
 );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileIcon, ImagePlus, Loader2, UploadCloud } from "lucide-react";
+import { FileIcon, ImagePlus, Loader2 } from "lucide-react";
 import type { ChatAttachment, ChatAttachmentKind } from "@/modals/chat.model";
 
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;

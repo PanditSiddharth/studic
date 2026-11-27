@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import {
@@ -65,15 +65,21 @@ export default function AuthScreen() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setCallbackUrl(safeCallback(params.get("callbackUrl")));
-    if (params.get("mode") === "signup") setMode("signup");
+    const nextCallbackUrl = safeCallback(params.get("callbackUrl"));
+    const wantsSignup = params.get("mode") === "signup";
+    // The URL is external state that only exists after mount, so read it in the
+    // effect and apply the values from a callback instead of the effect body.
+    queueMicrotask(() => {
+      setCallbackUrl(nextCallbackUrl);
+      if (wantsSignup) setMode("signup");
+    });
   }, []);
 
   const signInForm = useForm<SignInValues>({ resolver: zodResolver(signInSchema) });
   const signUpForm = useForm<SignUpValues>({ resolver: zodResolver(signUpSchema) });
   const forgotForm = useForm<{ email: string }>({ resolver: zodResolver(forgotEmailSchema) });
 
-  const password = signUpForm.watch("password") || "";
+  const password = useWatch({ control: signUpForm.control, name: "password" }) || "";
   const strength = useMemo(() => {
     let score = 0;
     if (password.length >= 8) score += 1;

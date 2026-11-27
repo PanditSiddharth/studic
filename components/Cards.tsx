@@ -4,6 +4,7 @@ import React from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { cn } from '@/modals/utils';
+import { formatDate } from '@/lib/date';
 
 interface IBlogCard {
     title: string;
@@ -60,7 +61,7 @@ export const BlogCard: React.FC<IBlogCard> = ({
                     <div className="flex justify-between items-center mt-4">
                         {date && (
                             <span className="text-sm text-muted-foreground">
-                                {new Date(date).toLocaleDateString()}
+                                {formatDate(date)}
                             </span>
                         )}
                         <Link href={slug}>

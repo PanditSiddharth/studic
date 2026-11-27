@@ -25,6 +25,7 @@ import { ImageUpload } from "@/components/product/image-upload";
 import { FormActionsBar, FormPageHeader, FormSection, StatusSelect } from "@/components/admin/form-ui";
 import { TagInput } from "@/components/admin/tag-input";
 import { ProductPicker } from "@/components/admin/product-picker";
+import SeoFields from "@/components/admin/seo-fields";
 import type { ProductOption } from "@/server-functions/product";
 import { courseFilter } from "@/helpers";
 import { addOrUpdateCourse } from "@/server-functions/course";
@@ -271,6 +272,8 @@ export default function AddCourseForm({
                 )}
               />
             </FormSection>
+
+            <SeoFields form={form} title={title} description={description} canonicalPath={`/course/${slug || "your-course-slug"}`} />
 
             <FormSection
               title="Course highlights"

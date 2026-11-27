@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import MarkdownPreview from "@uiw/react-markdown-preview";
@@ -9,9 +9,8 @@ import rehypeHighlight from "rehype-highlight";
 import {
   ArrowLeft, BadgeCheck, BookOpen, CheckCircle2, ExternalLink, Lock,
 } from "lucide-react";
-import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
-import { getBlog, type BlogAccessState, type BlogCourseSummary, type BlogResult } from "@/server-functions/blog";
+import { type BlogAccessState, type BlogCourseSummary, type BlogResult } from "@/server-functions/blog";
 import { getMyArticleContribution } from "@/server-functions/contribution";
 import SuggestEditDialog from "@/components/blog/suggest-edit-dialog";
 import ArticleContributorsCard, { ContributorLine } from "@/components/blog/article-contributors";
@@ -46,53 +45,28 @@ function extractHeadings(markdown: string): TocItem[] {
 const money = (price?: number, currency = "INR") =>
   !Number(price) ? "Free" : new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(price));
 
-export default function BlogArticle({ params }: { params: Params }) {
+export default function BlogArticle({ params, initialBlog }: { params: Params; initialBlog: BlogResult }) {
   const { theme, systemTheme } = useTheme();
-  const [blog, setBlog] = useState<BlogResult | null>(null);
-  const [access, setAccess] = useState<BlogAccessState | null>(null);
-  const [accessCourse, setAccessCourse] = useState<BlogCourseSummary | null>(null);
-  const [locked, setLocked] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadedSlug, setLoadedSlug] = useState<string | undefined>();
-  const [error, setError] = useState<string | null>(null);
+  const blog = initialBlog;
+  const access: BlogAccessState | null = initialBlog.access || null;
+  const accessCourse: BlogCourseSummary | null = initialBlog.accessCourse || null;
+  const locked = Boolean(initialBlog.locked);
   const [myContribution, setMyContribution] = useState<{ status?: string; submittedAt?: string | Date; reviewComment?: string } | null>(null);
 
   // Articles are linked both as /t/<slug> and /t/<category>/<slug>.
   const segments = params?.slug || [];
-  const category = segments.length > 1 ? segments[0] : undefined;
   const slug = segments.length > 1 ? segments[1] : segments[0];
   const colorMode = ["dark", "blue"].includes((theme === "system" ? systemTheme : theme) as string) ? "dark" : "light";
 
   useEffect(() => {
     let cancelled = false;
-    if (!slug) return;
-    getBlog({ slug, category })
-      .then((result) => {
-        if (cancelled) return;
-        if ("error" in result) {
-          setError(result.error);
-          setBlog(null);
-          setLocked(false);
-          return;
-        }
-        setBlog(result);
-        setLocked(Boolean(result.locked));
-        setAccess(result.access || null);
-        setAccessCourse(result.accessCourse || null);
-        setError(null);
-        getMyArticleContribution(String(result._id))
-          .then((mine) => { if (!cancelled) setMyContribution(mine); })
-          .catch(() => { /* the edit button still works without this */ });
-      })
-      .catch(() => { if (!cancelled) setError("This article could not be loaded"); })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadedSlug(slug);
-          setLoading(false);
-        }
-      });
+    if (initialBlog._id) {
+      getMyArticleContribution(String(initialBlog._id))
+        .then((mine) => { if (!cancelled) setMyContribution(mine); })
+        .catch(() => { /* the edit button still works without this */ });
+    }
     return () => { cancelled = true; };
-  }, [slug, category]);
+  }, [initialBlog._id]);
 
   const articleContent = useMemo(
     () => cleanArticleContent(blog?.content, { title: blog?.title, thumbnail: blog?.thumbnail }),
@@ -101,14 +75,14 @@ export default function BlogArticle({ params }: { params: Params }) {
   const headings = useMemo(() => extractHeadings(articleContent), [articleContent]);
 
   useEffect(() => {
-    if (loading || !articleContent) return;
+    if (!articleContent) return;
     const root = document.querySelector("[data-blog-article]");
     if (!root) return;
     Array.from(root.querySelectorAll("h1, h2, h3")).forEach((heading, index) => {
       const item = headings[index];
       if (item) heading.id = item.id;
     });
-  }, [loading, headings, articleContent]);
+  }, [headings, articleContent]);
 
   const relatedArticles = (blog?.relatedBlogs || []) as RelatedArticle[];
 
@@ -117,18 +91,6 @@ export default function BlogArticle({ params }: { params: Params }) {
       <div className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center px-4 text-center">
         <h1 className="text-xl font-semibold">Article unavailable</h1>
         <p className="mt-1 text-sm text-muted-foreground">This article could not be found</p>
-        <Button asChild variant="outline" className="mt-5"><Link href="/blogs"><ArrowLeft size={15} /> All articles</Link></Button>
-      </div>
-    );
-  }
-
-  if (loading || loadedSlug !== slug) return <Loader />;
-
-  if (error || !blog) {
-    return (
-      <div className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-xl font-semibold">Article unavailable</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{error || "This article may have been unpublished."}</p>
         <Button asChild variant="outline" className="mt-5"><Link href="/blogs"><ArrowLeft size={15} /> All articles</Link></Button>
       </div>
     );

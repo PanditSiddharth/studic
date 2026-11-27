@@ -21,6 +21,7 @@ import { ImageUpload } from "@/components/product/image-upload";
 import { FileUpload } from "@/components/product/file-upload";
 import { FormActionsBar, FormPageHeader, FormSection, StatusSelect } from "@/components/admin/form-ui";
 import { TagInput } from "@/components/admin/tag-input";
+import SeoFields from "@/components/admin/seo-fields";
 import { productFilter } from "@/helpers";
 import { addOrUpdateProducts } from "@/server-functions/product";
 import { MyField } from "../myField";
@@ -312,6 +313,8 @@ export default function AddProductForm({ initialValue }: { initialValue?: IProdu
                 )}
               />
             </FormSection>
+
+            <SeoFields form={form} title={title} description={description} canonicalPath={`/product/${slug || "your-product-slug"}`} />
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">

@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/ToastProvider";
 import StudyBuddy from "@/components/study-buddy";
 import localFont from "next/font/local";
 import { absoluteUrl, DOMAIN } from "@/lib/seo";
+import JsonLd from "@/components/seo/json-ld";
 const tdb = localFont({
   src: "../public/fonts/tdb.ttf",
   variable: "--tdb",
@@ -38,7 +39,6 @@ export const metadata: Metadata = {
   authors: [{ name: "Studic" }],
   creator: "Studic",
   publisher: "Studic",
-  alternates: { canonical: "/" },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
@@ -84,12 +84,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning >
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
+        <JsonLd data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
               "@type": "Organization",
+              "@id": `${DOMAIN}/#organization`,
               name: "Studic",
               url: DOMAIN,
               logo: absoluteUrl("/studic-neon-orbit-logo.png"),
@@ -99,9 +99,24 @@ export default function RootLayout({
                 "https://github.com/PanditSiddharth",
                 "https://linkedin.com/in/sidsharma0",
               ],
-            }),
-          }}
-        />
+            },
+            {
+              "@type": "WebSite",
+              "@id": `${DOMAIN}/#website`,
+              name: "Studic",
+              url: DOMAIN,
+              publisher: { "@id": `${DOMAIN}/#organization` },
+              potentialAction: {
+                "@type": "SearchAction",
+                target: {
+                  "@type": "EntryPoint",
+                  urlTemplate: absoluteUrl("/courses?search={search_term_string}"),
+                },
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ],
+        }} />
         {process.env.NODE_ENV === "production" && (
           <Script
             async

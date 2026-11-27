@@ -25,7 +25,7 @@ export const createQuery = async (data: Partial<IQuery>) => {
             return { success: true }
         else
             return { error: "Error creating Query" }
-    } catch (error) {
+    } catch {
         return { error: "Error creating query" }
     }
 }
@@ -78,8 +78,9 @@ export const deleteQuery = async (queryId: string) => {
             return { error: "Only admin can delete queries." }
         }
         const newData = await QueryModel.deleteOne({ _id: queryId });
+        if (!newData.acknowledged) return { error: "Error in deleting query" };
         return {success: true};
-    } catch (error) {
+    } catch {
         return { error: "Error in deleting query" }
     }
 }
@@ -95,7 +96,7 @@ export const getQueries = async () => {
         if(newData)
             return JSON.parse(JSON.stringify(newData)) as IQuery[]
         return {error: "Something went wrong"}
-    } catch (error) {
+    } catch {
         return { error: "Error in deleting query" }
     }
 }

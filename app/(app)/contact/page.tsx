@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
 import { ArrowRight, ArrowUpRight, Mail, MessageCircle, Send, Youtube } from "lucide-react";
 import ContactForm from "@/components/contact/contact-form";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
+  path: "/contact",
   title: "Contact",
   description: "Get help from the Studic team through chat, email, YouTube or Telegram.",
-  alternates: { canonical: "/contact" },
-};
+});
 
 const links = [
   { title: "Email us", detail: "mynmss3@gmail.com", href: "mailto:mynmss3@gmail.com", icon: Mail, className: "bg-rose-500/10 text-rose-600" },

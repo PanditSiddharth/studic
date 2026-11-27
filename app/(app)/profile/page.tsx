@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import ProfileView from "@/components/profile/profile-view";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = createPageMetadata({
+  path: "/profile",
   title: "My library",
   description: "Your enrolled courses, owned products and order history in one place.",
-  alternates: { canonical: "/profile" },
-  robots: { index: false, follow: false },
-};
+  noindex: true,
+});
 
 export default function ProfilePage() {
   return <ProfileView />;

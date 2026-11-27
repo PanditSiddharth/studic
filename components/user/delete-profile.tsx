@@ -11,7 +11,6 @@ import { signOut } from 'next-auth/react'
 
 const HandleDeleteAccount = ({ user, openedDelete, setOpenedDelete }: {
     user: IUser,
-    // eslint-disable-next-line
     openedDelete: boolean, setOpenedDelete: any
 }) => {
     const [input, setInput] = useState("")

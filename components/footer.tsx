@@ -3,7 +3,6 @@
 
 import { useDataStore } from "@/store";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   BookOpen,
@@ -23,14 +22,9 @@ import {
 import StudicLogo from "./logo";
 
 const Footer = () => {
-  const [isMounted, setIsMounted] = useState(false);
   const ft = useDataStore<boolean>("footer", true)();
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted || !ft?.data) return null;
+  if (!ft?.data) return null;
 
   const currentYear = new Date().getFullYear();
 

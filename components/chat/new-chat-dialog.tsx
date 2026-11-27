@@ -32,31 +32,43 @@ export default function NewChatDialog({ open, onOpenChange, onCreated }: NewChat
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  // Reset the form each time the dialog opens. Adjusting state during render is
+  // the React-recommended way to react to a prop change.
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setMode("direct");
+      setSearch("");
+      setSelected([]);
+      setName("");
+      setDescription("");
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
-    setMode("direct");
-    setSearch("");
-    setSelected([]);
-    setName("");
-    setDescription("");
-    setLoading(true);
     let cancelled = false;
-    getChatDirectory()
-      .then((result) => {
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const result = await getChatDirectory();
         if (cancelled) return;
         if ("error" in result) {
           toast.error(result.error);
           return;
         }
         setDirectory(result.users);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) toast.error("Could not load people");
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    void load();
+
     return () => {
       cancelled = true;
     };
