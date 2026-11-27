@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { disableGoogleAutoSelect } from "@/lib/google-one-tap-client";
 
 export const NavbarDropdown = () => {
   const { data: session } = useSession();
@@ -63,7 +64,7 @@ export const NavbarDropdown = () => {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="flex w-full cursor-pointer items-center text-destructive focus:text-destructive"
-          onSelect={() => { setIsOpen(false); void signOut({ callbackUrl: "/" }); }}
+          onSelect={() => { setIsOpen(false); disableGoogleAutoSelect(); void signOut({ callbackUrl: "/" }); }}
         >
           <LogOut className="mr-2 h-4 w-4" /> Log out
         </DropdownMenuItem>

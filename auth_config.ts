@@ -7,6 +7,7 @@ import { verifyLoginToken } from "@/lib/otp";
 import { readDeviceId } from "@/lib/device";
 import connectDB from "@/connectDB";
 import { UserModel } from "@/modals/user.model";
+import { verifyGoogleIdToken } from "@/lib/google-one-tap";
 
 export default {
     cookies:
@@ -81,6 +82,35 @@ export default {
                     name: user.name,
                     email: user.email,
                     image: user.image || "",
+                };
+            },
+        }),
+        /**
+         * Google One Tap (FedCM) sign-in.
+         *
+         * The browser hands us a Google ID token, which is verified here on the
+         * server. Returning the verified email lets the existing `signIn`
+         * callback in `auth.ts` find or create the matching Studic account, so
+         * no second auth system or duplicate account is introduced.
+         */
+        Credentials({
+            id: "google-one-tap",
+            name: "Google One Tap",
+            credentials: {
+                credential: { label: "Google credential", type: "text" },
+            },
+            async authorize(credentials) {
+                const credential = typeof credentials?.credential === "string" ? credentials.credential : "";
+                const profile = await verifyGoogleIdToken(credential);
+                if (!profile) return null;
+
+                return {
+                    // `id` is only used to seed the JWT; the jwt callback replaces
+                    // it with the real Studic user record looked up by email.
+                    id: profile.sub,
+                    name: profile.name || profile.email.split("@")[0],
+                    email: profile.email,
+                    image: profile.picture || "",
                 };
             },
         }),

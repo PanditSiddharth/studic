@@ -6,6 +6,12 @@ type CheckoutResponse = {
   razorpay_signature: string;
 };
 
+type CheckoutPrefill = {
+  name?: string;
+  email?: string;
+  contact?: string;
+};
+
 type RazorpayOptions = {
   key: string;
   amount: number;
@@ -13,6 +19,7 @@ type RazorpayOptions = {
   name: string;
   description: string;
   order_id: string;
+  prefill?: CheckoutPrefill;
   handler: (response: CheckoutResponse) => void;
   modal: { ondismiss: () => void };
 };
@@ -62,7 +69,6 @@ export async function openRazorpayCheckout(itemType: "product" | "course", itemI
   if (!orderResponse.ok) {
     throw new Error(order.error || "Could not start checkout");
   }
-
   await loadRazorpayScript();
   const Razorpay = window.Razorpay;
   if (!Razorpay) throw new Error("Razorpay checkout did not initialize");
@@ -87,6 +93,7 @@ export async function openRazorpayCheckout(itemType: "product" | "course", itemI
       name: "Studic",
       description: "Secure payment",
       order_id: order.order_id,
+      prefill: order.prefill,
       handler: async (payment) => {
         try {
           const response = await fetch("/api/verify-payment", {

@@ -6,6 +6,7 @@ import { CourseModel } from "@/modals/course.model";
 import { EnrollmentModel } from "@/modals/enrollment.model";
 import { OrderModel } from "@/modals/order.model";
 import { ProductModel } from "@/modals/product.model";
+import { UserModel } from "@/modals/user.model";
 import { getRazorpayConfig } from "@/lib/razorpay";
 import { getSessionUser } from "@/server-functions/user";
 
@@ -98,6 +99,33 @@ export async function POST(request: Request) {
     }
 
     const { client } = getRazorpayConfig();
+
+    // Razorpay checkout remembers the last contact used in the browser. When we
+    // have the signed-in user's phone, prefill their own name/email/phone so the
+    // merchant/super-admin email is never shown and checkout skips the contact
+    // step. When the phone is missing we send no prefill at all, so Razorpay
+    // hides the prefilled contact fields and goes straight to payment methods.
+    // Read fresh from the database because the JWT session can be stale.
+    const buyer = await UserModel.findById(session._id).select("name email phone").lean();
+    const buyerName = String(buyer?.name || session.name || "").trim();
+    const buyerEmail = String(buyer?.email || session.email || "").trim();
+    const rawPhone = String(buyer?.phone || session.phone || "").trim();
+    const phoneDigits = rawPhone.replace(/[^\d+]/g, "");
+    const contact = phoneDigits
+      ? phoneDigits.startsWith("+")
+        ? phoneDigits
+        : phoneDigits.length === 10
+          ? `+91${phoneDigits}`
+          : phoneDigits
+      : "";
+    const prefill = contact
+      ? {
+          ...(buyerName ? { name: buyerName } : {}),
+          ...(buyerEmail ? { email: buyerEmail } : {}),
+          contact,
+        }
+      : undefined;
+
     const existingOrder = await OrderModel.findOne({
       buyer: session._id,
       ...itemFilter,
@@ -111,6 +139,7 @@ export async function POST(request: Request) {
         order_id: existingOrder.providerOrderId,
         amount,
         currency,
+        prefill,
       });
     }
 
@@ -140,6 +169,7 @@ export async function POST(request: Request) {
       order_id: providerOrder.id,
       amount: providerOrder.amount,
       currency: providerOrder.currency,
+      prefill,
     });
   } catch (error) {
     console.error("Razorpay order creation failed", error);

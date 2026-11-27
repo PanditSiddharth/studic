@@ -12,6 +12,7 @@ import { NavbarDropdown } from "./navbar-dropdown";
 import StudicLogo from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
+import { disableGoogleAutoSelect } from "@/lib/google-one-tap-client";
 import {
   Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet";
@@ -171,7 +172,7 @@ export default function Navbar() {
                       )}
                       <button
                         type="button"
-                        onClick={() => { setMenuOpen(false); void signOut({ callbackUrl: "/" }); }}
+                        onClick={() => { setMenuOpen(false); disableGoogleAutoSelect(); void signOut({ callbackUrl: "/" }); }}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-destructive hover:bg-destructive/10"
                       >
                         <LogOut size={17} /> Log out
