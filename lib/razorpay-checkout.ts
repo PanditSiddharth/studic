@@ -22,6 +22,9 @@ type RazorpayOptions = {
   prefill?: CheckoutPrefill;
   handler: (response: CheckoutResponse) => void;
   modal: { ondismiss: () => void };
+  hidden?: {
+    contact?: boolean;
+  };
 };
 
 type RazorpayInstance = {
@@ -94,6 +97,10 @@ export async function openRazorpayCheckout(itemType: "product" | "course", itemI
       description: "Secure payment",
       order_id: order.order_id,
       prefill: order.prefill,
+      hidden: {
+        contact: true,
+      },
+
       handler: async (payment) => {
         try {
           const response = await fetch("/api/verify-payment", {
