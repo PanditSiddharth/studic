@@ -118,11 +118,11 @@ export async function POST(request: Request) {
           ? `+91${phoneDigits}`
           : phoneDigits
       : "";
-      
-const prefill = {
-  ...(buyerName ? { name: buyerName } : {}),
-  ...(buyerEmail ? { email: buyerEmail } : {}),
-};
+    const prefill = {
+          ...(buyerName ? { name: buyerName } : {}),
+          ...(buyerEmail ? { email: buyerEmail } : {}),
+          ...(contact ? { contact } : {}),
+        }
 
     const existingOrder = await OrderModel.findOne({
       buyer: session._id,
